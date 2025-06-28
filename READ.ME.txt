@@ -1,0 +1,15 @@
+ActivityLogger/
+├── main.py
+├── core/
+│   ├── __init__.py
+│   ├── logger.py
+│   ├── config.py
+│   └── utils.py
+├── ui/
+│   ├── __init__.py
+│   ├── viewer.py
+│   ├── help_viewer.py
+│   └── category_selector.py
+└── tray/
+    ├── __init__.py
+    └── tray_manager.py
