@@ -2,6 +2,8 @@
 
 ActivityLogger is a Windows desktop application that automatically tracks your computer activity by monitoring active windows and logging usage data to a CSV file. The application runs in the system tray and provides a simple interface for viewing, analyzing, and exporting your activity logs.
 
+René Coffeng, 28 June 2025
+
 ## Features
 
 - **Automatic Activity Logging:** Monitors active windows and records application usage, window titles, and idle time.
