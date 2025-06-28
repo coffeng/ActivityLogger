@@ -143,41 +143,43 @@ def copy_to_startup_and_run(exe_path):
     """Copy executable to Start Menu and optionally run it"""
     try:
         import shutil
-        
+
         # Get the Startup folder path
         startup_folder = Path.home() / "AppData" / "Roaming" / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
-        
+
         # Ensure startup folder exists
         startup_folder.mkdir(parents=True, exist_ok=True)
-        
+
         # Define destination path
         startup_exe_path = startup_folder / "ActivityLogger.exe"
-        
+
         # Copy the executable
         print(f"Copying to Startup folder: {startup_exe_path}")
         shutil.copy2(exe_path, startup_exe_path)
         print(f"Successfully copied ActivityLogger.exe to Startup folder")
-        
+
         # Ask user if they want to run it
         print()
         response = input("Do you want to run ActivityLogger.exe now? (y/N): ").strip().lower()
-        
+
         if response == 'y':
             print("Starting ActivityLogger.exe...")
             try:
                 import subprocess
-                # Run the executable in the background
-                subprocess.Popen([str(startup_exe_path)], 
-                               creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0)
+                # Launch via cmd to ensure it detaches and works from Startup
+                subprocess.Popen(
+                    ["cmd", "/c", "start", "", str(startup_exe_path)],
+                    shell=True
+                )
                 print("ActivityLogger.exe started successfully!")
                 time.sleep(2)  # Give it time to start
             except Exception as e:
                 print(f"Error starting ActivityLogger.exe: {e}")
         else:
             print("ActivityLogger.exe not started. You can run it manually from the Startup folder.")
-        
+
         return True
-        
+
     except Exception as e:
         print(f"Error copying to Startup folder: {e}")
         return False
@@ -235,7 +237,9 @@ def main():
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--onefile",
-        "--windowed",
+        #"--clean",           # Remove temporary files before building
+        "--noconfirm",       # Replace output directory without asking
+        "--windowed",        # Hide console window (for GUI apps)
         "--name=ActivityLogger",
         "--add-data=core;core",
         "--add-data=ui;ui", 
@@ -252,16 +256,15 @@ def main():
         "--hidden-import=psutil",
         "--collect-all=pystray",
         "--collect-all=PIL",
-        "--noconfirm",
     ]
-    
-    # Add icon if available (use relative path since we're in the ActivityLogger folder)
+
+    # Only use --icon if you trust your .ico file
     if has_icon and icon_path.exists():
-        cmd.append("--icon=icon.ico")
-        print(f"Using icon: {icon_path}")
+        print("Using trusted icon file.")
+        cmd.append(f"--icon={icon_path}")
     else:
-        print("Building without icon")
-    
+        print("Building without icon (or icon not trusted/found).")
+
     cmd.append(str(main_py))
     
     print("Running PyInstaller...")
@@ -269,18 +272,40 @@ def main():
     try:
         result = subprocess.run(cmd, cwd=current_dir, check=True, capture_output=True, text=True)
         print("Build successful!")
-        
+        # ...existing code...
+
         exe_path = dist_dir / "ActivityLogger.exe"
         if exe_path.exists():
             print(f"ActivityLogger.exe created at: {exe_path}")
             print(f"File size: {exe_path.stat().st_size / 1024 / 1024:.2f} MB")
-            
+
+            # Sign the executable
+            print("Signing ActivityLogger.exe...")
+            signtool_cmd = [
+                "signtool", "sign",
+                "/tr", "http://timestamp.digicert.com",
+                "/td", "SHA256",
+                "/fd", "SHA256",
+                "/sha1", "554cf2292aa90dcd2cda3326b39993c3407605ec",
+                str(exe_path)
+            ]
+            try:
+                sign_result = subprocess.run(signtool_cmd, capture_output=True, text=True)
+                if sign_result.returncode == 0:
+                    print("Successfully signed ActivityLogger.exe")
+                else:
+                    print("Failed to sign ActivityLogger.exe")
+                    print("STDOUT:", sign_result.stdout)
+                    print("STDERR:", sign_result.stderr)
+            except Exception as e:
+                print(f"Error running signtool: {e}")
+
             # Copy to Startup folder and ask to run
             print()
             print("=" * 60)
             copy_to_startup_and_run(exe_path)
             print("=" * 60)
-            
+           
         else:
             print("Warning: ActivityLogger.exe not found in dist directory")
             

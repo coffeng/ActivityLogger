@@ -44,5 +44,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icon.ico'],
+    icon=['C:\\Users\\100014430\\OneDrive - GE HealthCare\\Documents\\My Projects\\GitHub\\coffeng\\ActivityLogger\\icon.ico'],
 )
