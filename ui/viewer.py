@@ -8,6 +8,11 @@ import tkinter as tk
 from tkinter import ttk
 from core.utils import format_duration
 from .category_selector import CategorySelector
+import matplotlib
+matplotlib.use('Agg')  # Use a non-interactive backend for safety
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import pandas as pd
 
 
 class LogViewer:
@@ -54,13 +59,16 @@ class LogViewer:
         # Create tabs
         self.activity_frame = ttk.Frame(self.notebook)
         self.summary_frame = ttk.Frame(self.notebook)
+        self.graph_frame = ttk.Frame(self.notebook)  # New tab for stacked bar graph
         
         self.notebook.add(self.activity_frame, text="Activity Log")
         self.notebook.add(self.summary_frame, text="Summary")
+        self.notebook.add(self.graph_frame, text="Category Graph")  # Add new tab
 
         # Setup tabs
         self.setup_activity_tab()
         self.setup_summary_tab()
+        self.setup_graph_tab()  # Setup the new graph tab
 
         # Create footer with statistics
         self.create_footer()
@@ -246,8 +254,8 @@ class LogViewer:
                             reader = list(csv.reader(f))
                             if len(reader) > 1:
                                 headers = reader[0]
-                                if 'ApplicationKey' in headers:
-                                    app_key_index = headers.index('ApplicationKey')
+                                if 'ProcessName' in headers:
+                                    app_key_index = headers.index('ProcessName')
                                     unique_keys = set()
                                     for row in reader[1:]:
                                         if len(row) > app_key_index:
@@ -271,7 +279,7 @@ class LogViewer:
             # Update the category in memory
             logger.app_categories[key] = new_category
             
-            # Update historical data in ActivityLogger.csv
+            # Update historical data in ActivityLog.csv
             updated_count = 0
             if hasattr(logger, 'update_historical_categories'):
                 updated_count = logger.update_historical_categories(key, new_category)
@@ -309,9 +317,99 @@ class LogViewer:
         try:
             self.load_log()  # Refresh activity log
             self.load_summary()  # Refresh summary
+            self.setup_graph_tab()  # Refresh graph tab
             print("Views refreshed after category change")
         except Exception as e:
             print(f"Error refreshing views after category change: {e}")
+
+    def setup_graph_tab(self):
+        """Setup the stacked bar graph tab using the correct log CSV via get_log_path(), skipping 'Inactive' and reducing flicker.
+        Only refresh/redraw if window size changed.
+        Y axis is in hours. Legend sorted by total duration, with hours shown. Only top 20 processes in legend.
+        """
+        # Store previous size to avoid unnecessary redraws
+        if not hasattr(self, "_graph_prev_size"):
+            self._graph_prev_size = (self.graph_frame.winfo_width(), self.graph_frame.winfo_height())
+
+        current_size = (self.graph_frame.winfo_width(), self.graph_frame.winfo_height())
+        if hasattr(self, "_graph_canvas") and self._graph_prev_size == current_size:
+            # No size change, skip redraw to reduce flicker
+            return
+        self._graph_prev_size = current_size
+
+        # Clear frame
+        for widget in self.graph_frame.winfo_children():
+            widget.destroy()
+
+        log_csv_path = self.get_log_path() if hasattr(self, "get_log_path") else self.log_path
+
+        if not os.path.exists(log_csv_path):
+            label = tk.Label(self.graph_frame, text=f"{os.path.basename(log_csv_path)} not found", font=('Arial', 12))
+            label.pack(padx=10, pady=10)
+            return
+
+        try:
+            with open(log_csv_path, "r", encoding="utf-8") as f:
+                reader = list(csv.reader(f))
+                if not reader or len(reader) < 2:
+                    label = tk.Label(self.graph_frame, text=f"No data in {os.path.basename(log_csv_path)}", font=('Arial', 12))
+                    label.pack(padx=10, pady=10)
+                    return
+                headers = reader[0]
+                rows = reader[1:]
+
+            required_cols = ["Category", "ProcessName", "DurationSeconds"]
+            if not all(col in headers for col in required_cols):
+                label = tk.Label(self.graph_frame, text=f"Required columns not found in {os.path.basename(log_csv_path)}", font=('Arial', 12))
+                label.pack(padx=10, pady=10)
+                return
+
+            df = pd.DataFrame(rows, columns=headers)
+            df["DurationSeconds"] = pd.to_numeric(df["DurationSeconds"], errors="coerce").fillna(0).astype(int)
+            # Filter out 'Inactive' category
+            df = df[df["Category"].str.lower() != "inactive"]
+
+            # Group by Category and ProcessName (process name), sum durations
+            pivot = df.pivot_table(index="Category", columns="ProcessName", values="DurationSeconds", aggfunc="sum", fill_value=0)
+            # Sort categories by total duration descending
+            pivot["Total"] = pivot.sum(axis=1)
+            pivot = pivot.sort_values("Total", ascending=False)
+            pivot = pivot.drop(columns=["Total"])
+
+            if pivot.empty:
+                label = tk.Label(self.graph_frame, text="No activity data to display.", font=('Arial', 12))
+                label.pack(padx=10, pady=10)
+                return
+
+            # Convert seconds to hours for Y axis
+            pivot = pivot / 3600.0
+
+            # Sort legend labels by total duration and append hours, only top 20
+            process_totals = pivot.sum(axis=0)
+            sorted_processes = process_totals.sort_values(ascending=False)
+            top_processes = sorted_processes.head(20)
+            legend_labels = [
+                f"{proc} ({hours:.2f}h)" for proc, hours in top_processes.items()
+            ]
+            # Reorder columns in pivot to match top_processes, drop others
+            pivot = pivot[top_processes.index]
+
+            fig, ax = plt.subplots(figsize=(8, 5), dpi=100)
+            bars = pivot.plot(kind="bar", stacked=True, ax=ax)
+            ax.set_ylabel("Total Time (hours)")
+            ax.set_xlabel("Category")
+            ax.set_title("Activity by Category (Stacked by Process)")
+            ax.legend(legend_labels, title="Process", bbox_to_anchor=(1.05, 1), loc="upper left")
+            plt.tight_layout()
+
+            # Embed in tkinter with reference to avoid flicker on same size
+            canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=1)
+            self._graph_canvas = canvas
+        except Exception as e:
+            label = tk.Label(self.graph_frame, text=f"Error loading graph: {e}", font=('Arial', 12))
+            label.pack(padx=10, pady=10)
 
     def on_activity_heading_click(self, col):
         """Handle clicking on activity log column headers for sorting"""
@@ -643,6 +741,8 @@ class LogViewer:
 
             # Refresh summary
             self.load_summary()
+            # Refresh graph
+            self.setup_graph_tab()
 
             # Update recording button status
             self.update_recording_button()
