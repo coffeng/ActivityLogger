@@ -21,8 +21,25 @@ class CategorySelector:
         self.popup.geometry("350x500")
         self.popup.resizable(False, True)
         
-        # Position popup near mouse cursor
-        self.popup.geometry(f"+{event.x_root + 10}+{event.y_root + 10}")
+        # Position popup near mouse cursor, but ensure it fits on screen
+        screen_width = self.popup.winfo_screenwidth()
+        screen_height = self.popup.winfo_screenheight()
+        popup_width = 350
+        popup_height = 500
+
+        # Calculate initial position
+        x = event.x_root + 10
+        y = event.y_root + 10
+
+        # Adjust if popup would go off the right edge
+        if x + popup_width > screen_width:
+            x = screen_width - popup_width - 10  # 10px margin
+
+        # Adjust if popup would go off the bottom edge
+        if y + popup_height > screen_height:
+            y = screen_height - popup_height - 100  # 10px margin
+
+        self.popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
         
         # Make popup modal
         self.popup.transient(parent)

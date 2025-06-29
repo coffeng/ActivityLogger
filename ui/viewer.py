@@ -114,7 +114,7 @@ class LogViewer:
         # Summary info label
         self.summary_info_label = tk.Label(
             self.summary_frame, 
-            text="Activity Summary - Categories sorted by total duration",
+            text="Activity Summary - Categories sorted by total duration (change with right click)",
             font=('Arial', 10, 'bold'),
             pady=5
         )
@@ -514,7 +514,7 @@ class LogViewer:
                 rows = reader[data_start_idx:] if data_start_idx < len(reader) else []
 
                 # Update info label with metadata
-                info_text = "Activity Summary - Categories sorted by total duration"
+                info_text = "Activity Summary - Categories sorted by total duration (change with right click)"
                 if metadata:
                     info_text += " | " + " | ".join(metadata)
                 self.summary_info_label.config(text=info_text)

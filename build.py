@@ -140,43 +140,46 @@ def create_icon_if_missing():
     return True
 
 def copy_to_startup_and_run(exe_path):
-    """Copy executable to Start Menu and optionally run it"""
+    """Copy executable to Start Menu. Kill running instance first, no prompts."""
     try:
         import shutil
+        import psutil
 
         # Get the Startup folder path
         startup_folder = Path.home() / "AppData" / "Roaming" / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
-
-        # Ensure startup folder exists
         startup_folder.mkdir(parents=True, exist_ok=True)
-
-        # Define destination path
         startup_exe_path = startup_folder / "ActivityLogger.exe"
+
+        # Kill running ActivityLogger.exe processes before copying
+        killed = False
+        for proc in psutil.process_iter(['pid', 'name', 'exe']):
+            try:
+                if proc.info['name'] and 'ActivityLogger.exe' in proc.info['name']:
+                    print(f"Terminating running ActivityLogger.exe (PID: {proc.info['pid']})...")
+                    proc.terminate()
+                    killed = True
+            except Exception:
+                pass
+
+        # Wait for processes to exit if any were killed
+        if killed:
+            print("Waiting for ActivityLogger.exe to exit...")
+            for _ in range(20):  # Wait up to 10 seconds
+                running = False
+                for proc in psutil.process_iter(['name']):
+                    if proc.info['name'] and 'ActivityLogger.exe' in proc.info['name']:
+                        running = True
+                        break
+                if not running:
+                    break
+                time.sleep(0.5)
+            else:
+                print("Warning: ActivityLogger.exe may still be running.")
 
         # Copy the executable
         print(f"Copying to Startup folder: {startup_exe_path}")
         shutil.copy2(exe_path, startup_exe_path)
         print(f"Successfully copied ActivityLogger.exe to Startup folder")
-
-        # Ask user if they want to run it
-        print()
-        response = input("Do you want to run ActivityLogger.exe now? (y/N): ").strip().lower()
-
-        if response == 'y':
-            print("Starting ActivityLogger.exe...")
-            try:
-                import subprocess
-                # Launch via cmd to ensure it detaches and works from Startup
-                subprocess.Popen(
-                    ["cmd", "/c", "start", "", str(startup_exe_path)],
-                    shell=True
-                )
-                print("ActivityLogger.exe started successfully!")
-                time.sleep(2)  # Give it time to start
-            except Exception as e:
-                print(f"Error starting ActivityLogger.exe: {e}")
-        else:
-            print("ActivityLogger.exe not started. You can run it manually from the Startup folder.")
 
         return True
 
@@ -188,13 +191,34 @@ def main():
     """Build ActivityLogger.exe"""
     print("Building ActivityLogger.exe...")
     print(f"Working directory: {Path(__file__).parent.absolute()}")
-    
-    # Check for running processes first
-    if check_for_running_processes():
-        response = input("ActivityLogger is running. Continue anyway? (y/N): ")
-        if response.lower() != 'y':
-            return 1
-    
+
+    # Check for running processes first, with a 2-second timeout and default to yes
+    running = False
+    try:
+        import psutil
+        for proc in psutil.process_iter(['pid', 'name']):
+            if proc.info['name'] and 'ActivityLogger.exe' in proc.info['name']:
+                print(f"Warning: ActivityLogger.exe is running (PID: {proc.info['pid']})")
+                running = True
+                break
+    except ImportError:
+        pass
+    except Exception:
+        pass
+
+    if running:
+        print("ActivityLogger is running. Waiting 2 seconds before continuing (default: yes)...")
+        try:
+            import threading
+
+            def wait_and_continue():
+                time.sleep(2)
+            t = threading.Thread(target=wait_and_continue)
+            t.start()
+            t.join(timeout=2)
+        except Exception:
+            time.sleep(2)
+
     # Get the current directory (should be ActivityLogger folder)
     current_dir = Path(__file__).parent.absolute()
     
@@ -272,13 +296,36 @@ def main():
     try:
         result = subprocess.run(cmd, cwd=current_dir, check=True, capture_output=True, text=True)
         print("Build successful!")
-        # ...existing code...
 
+        # Define exe_path right after build
         exe_path = dist_dir / "ActivityLogger.exe"
         if exe_path.exists():
             print(f"ActivityLogger.exe created at: {exe_path}")
             print(f"File size: {exe_path.stat().st_size / 1024 / 1024:.2f} MB")
+        else:
+            print("Warning: ActivityLogger.exe not found in dist directory")
 
+        # Ask if signing should be skipped, with 2s timeout, default yes
+        import threading
+
+        def ask_skip_sign():
+            try:
+                return input("Skip signing ActivityLogger.exe? (Y/n) [default: Y]: ").strip().lower()
+            except Exception:
+                return ""
+
+        skip_sign = [True]  # Use list for mutability in thread
+
+     
+        resp = ask_skip_sign()
+        if resp == "n":
+            skip_sign = False
+        else:
+            skip_sign = True
+
+        if skip_sign:
+            print("Skipping signing ActivityLogger.exe.")
+        else:
             # Sign the executable
             print("Signing ActivityLogger.exe...")
             signtool_cmd = [
@@ -300,15 +347,14 @@ def main():
             except Exception as e:
                 print(f"Error running signtool: {e}")
 
-            # Copy to Startup folder and ask to run
-            print()
-            print("=" * 60)
-            copy_to_startup_and_run(exe_path)
-            print("=" * 60)
+
+
+        # Copy to Startup folder and run
+        print()
+        print("=" * 60)
+        copy_to_startup_and_run(exe_path)
+        print("=" * 60)
            
-        else:
-            print("Warning: ActivityLogger.exe not found in dist directory")
-            
     except subprocess.CalledProcessError as e:
         print(f"Build failed with return code {e.returncode}")
         print("STDOUT:", e.stdout)

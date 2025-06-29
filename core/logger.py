@@ -382,13 +382,13 @@ class ActivityLogger:
         LogViewer(self.log_path)
 
     def update_historical_categories(self, key, new_category):
-        """Update category for all historical entries of a key in ActivityLogger.csv"""
+        """Update category for all historical entries of a key in ActivityLog.csv"""
         try:
-            if not os.path.exists(self.log_file):
+            if not os.path.exists(self.log_path):  # <-- changed from self.log_file
                 return 0
             
             # Read all rows
-            with open(self.log_file, 'r', encoding='utf-8') as f:
+            with open(self.log_path, 'r', encoding='utf-8') as f:  # <-- changed from self.log_file
                 reader = list(csv.reader(f))
             
             if not reader:
@@ -396,13 +396,13 @@ class ActivityLogger:
                 
             headers = reader[0]
             rows = reader[1:]
-            
-            # Find the ApplicationKey and Category columns
+
+            # Find the ProcessName and Category columns, do not change to ApplicationKey
             try:
-                app_key_index = headers.index('ApplicationKey')
+                process_name_index = headers.index('ProcessName')
                 category_index = headers.index('Category')
             except ValueError:
-                print("Could not find ApplicationKey or Category columns")
+                print("Could not find ProcessName or Category columns")
                 return 0
             
             # Prepare key variations for matching
@@ -421,30 +421,31 @@ class ActivityLogger:
             
             print(f"Looking for key variations: {key_variations}")
             
-            # Update rows with matching ApplicationKey (using any variation)
+            # Update rows with matching ProcessName (using any variation)
             updated_count = 0
             matched_keys = set()
             
             for row in rows:
-                if len(row) > max(app_key_index, category_index):
-                    row_key = row[app_key_index]
+                if len(row) > max(process_name_index, category_index):
+                    row_key = row[process_name_index]
                     
-                    # Check if row key matches any of our key variations
+                    # Check if row key matches any of our key variations (case-insensitive)
                     key_match = False
-                    
-                    # Direct match
-                    if row_key in key_variations:
+
+                    # Direct match (case-insensitive)
+                    if row_key.lower() in {k.lower() for k in key_variations}:
                         key_match = True
                         matched_keys.add(row_key)
-                    
-                    # Also check if row_key without extension matches key without extension
+
+                    # Also check if row_key without extension matches key without extension (case-insensitive)
                     if not key_match and '.' in row_key:
-                        row_key_without_ext = row_key.rsplit('.', 1)[0]
-                        key_without_ext = key.rsplit('.', 1)[0] if '.' in key else key
+                        row_key_without_ext = row_key.rsplit('.', 1)[0].lower()
+                        key_without_ext = key.rsplit('.', 1)[0].lower() if '.' in key else key.lower()
                         if row_key_without_ext == key_without_ext:
                             key_match = True
                             matched_keys.add(row_key)
-                    
+
+                    # Only change the category, do not change the ProcessName
                     if key_match and row[category_index] != new_category:
                         row[category_index] = new_category
                         updated_count += 1
@@ -453,7 +454,7 @@ class ActivityLogger:
             
             # Write back to file only if changes were made
             if updated_count > 0:
-                with open(self.log_file, 'w', newline='', encoding='utf-8') as f:
+                with open(self.log_path, 'w', newline='', encoding='utf-8') as f:  # <-- changed from self.log_file
                     writer = csv.writer(f)
                     writer.writerow(headers)
                     writer.writerows(rows)
@@ -503,12 +504,38 @@ class ActivityLogger:
         return process_name
 
     def normalize_key_for_matching(self, key1, key2):
-        """Check if two keys match, considering extension variations"""
-        if key1 == key2:
-            return True
-        
-        # Remove extensions and compare
-        key1_base = key1.rsplit('.', 1)[0] if '.' in key1 else key1
-        key2_base = key2.rsplit('.', 1)[0] if '.' in key2 else key2
-        
-        return key1_base.lower() == key2_base.lower()
+        """Check if two keys match, ignoring extension and case"""
+        # Remove extension and convert to lowercase
+        key1_base = key1.rsplit('.', 1)[0].lower() if '.' in key1 else key1.lower()
+        key2_base = key2.rsplit('.', 1)[0].lower() if '.' in key2 else key2.lower()
+        return key1_base == key2_base
+
+    def generate_summary(self):
+        """Generate a summary CSV with total duration per process and category."""
+        try:
+            if not os.path.exists(self.log_path):
+                print("No log file found for summary generation.")
+                return
+
+            summary = {}
+            with open(self.log_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    process = row.get("ProcessName", "")
+                    category = row.get("Category", "")
+                    duration = int(row.get("DurationSeconds", 0))
+                    key = (process, category)
+                    summary[key] = summary.get(key, 0) + duration
+
+            # Write summary to CSV
+            summary_path = os.path.join(os.path.dirname(self.log_path), "ActivitySummary.csv")
+            with open(summary_path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(["ProcessName", "Category", "TotalDurationSeconds"])
+                for (process, category), total_duration in summary.items():
+                    writer.writerow([process, category, total_duration])
+
+            print(f"Summary written to {summary_path}")
+
+        except Exception as e:
+            print(f"Error generating summary: {e}")
