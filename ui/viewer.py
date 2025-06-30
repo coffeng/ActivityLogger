@@ -21,6 +21,8 @@ class LogViewer:
     _instances = {}  # Class variable to track open instances
     
     def __init__(self, log_path):
+        self._last_log_mtime = None
+        self._last_log_data = None
         # Check if an instance for this log_path already exists
         if log_path in LogViewer._instances:
             existing_viewer = LogViewer._instances[log_path]
@@ -56,14 +58,19 @@ class LogViewer:
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
+        # Make tab buttons 150% in height
+        style = ttk.Style(self.root)
+        style.configure("TNotebook.Tab", minheight=36)
+
         # Create tabs
         self.activity_frame = ttk.Frame(self.notebook)
         self.summary_frame = ttk.Frame(self.notebook)
         self.graph_frame = ttk.Frame(self.notebook)  # New tab for stacked bar graph
         
-        self.notebook.add(self.activity_frame, text="Activity Log")
-        self.notebook.add(self.summary_frame, text="Summary")
-        self.notebook.add(self.graph_frame, text="Category Graph")  # Add new tab
+        # When adding tabs to the notebook, add 2 spaces before and after the tab label
+        self.notebook.add(self.activity_frame, text="  Activity Log  ")
+        self.notebook.add(self.summary_frame, text="  Summary  ")
+        self.notebook.add(self.graph_frame, text="  Category Graph  ")  # Add new tab
 
         # Setup tabs
         self.setup_activity_tab()
@@ -74,8 +81,7 @@ class LogViewer:
         self.create_footer()
 
         self.last_line_count = 0
-        self.refresh_interval = 2000  # ms
-
+        self.refresh_interval = 250  # ms, for more responsive polling
         self.load_log()
         self.load_summary()
         self.update_recording_button()
@@ -386,8 +392,8 @@ class LogViewer:
 
             # Sort legend labels by total duration and append hours, only top 20
             process_totals = pivot.sum(axis=0)
-            sorted_processes = process_totals.sort_values(ascending=False)
-            top_processes = sorted_processes.head(20)
+            sorted_processs = process_totals.sort_values(ascending=False)
+            top_processes = sorted_processs.head(20)
             legend_labels = [
                 f"{proc} ({hours:.2f}h)" for proc, hours in top_processes.items()
             ]
@@ -556,16 +562,35 @@ class LogViewer:
                 self.tree.heading(col, text="")
             self.tree.delete(*self.tree.get_children())
             self.update_statistics([])
+            self._last_log_mtime = None
+            self._last_log_data = None
             return
 
         try:
-            with open(self.log_path, "r", encoding="utf-8") as f:
-                reader = list(csv.reader(f))
-                if not reader:
-                    self.update_statistics([])
-                    return
-                headers = reader[0]
-                rows = reader[1:]
+            # --- Remember selection before clearing ---
+            selected = self.tree.selection()
+            selected_key = None
+            if selected:
+                selected_values = self.tree.item(selected[0], 'values')
+                # Use a tuple of the first two columns as a unique key (adjust as needed)
+                selected_key = tuple(selected_values[:2]) if selected_values else None
+
+            # Check file modification time
+            mtime = os.path.getmtime(self.log_path)
+            if hasattr(self, "_last_log_mtime") and self._last_log_mtime == mtime and self._last_log_data is not None:
+                headers, rows = self._last_log_data
+            else:
+                with open(self.log_path, "r", encoding="utf-8") as f:
+                    reader = list(csv.reader(f))
+                    if not reader:
+                        self.update_statistics([])
+                        self._last_log_mtime = mtime
+                        self._last_log_data = ([], [])
+                        return
+                    headers = reader[0]
+                    rows = reader[1:]
+                self._last_log_mtime = mtime
+                self._last_log_data = (headers, rows)
 
             # Reverse the rows so newest is on top
             rows = rows[::-1]
@@ -586,19 +611,30 @@ class LogViewer:
             self.tree.delete(*self.tree.get_children())
 
             # Insert new rows (most recent first) - excluding WindowDetails column
+            item_id_to_select = None
             for row in rows:
                 if windowdetails_index >= 0 and len(row) > windowdetails_index:
-                    # Remove WindowDetails value from display
-                    display_row = row[:windowdetails_index] + \
-                        row[windowdetails_index + 1:]
+                    display_row = row[:windowdetails_index] + row[windowdetails_index + 1:]
                 else:
                     display_row = row
-                self.tree.insert("", "end", values=display_row)
+                item_id = self.tree.insert("", "end", values=display_row)
+                # --- Restore selection if key matches ---
+                if selected_key and tuple(display_row[:2]) == selected_key:
+                    item_id_to_select = item_id
 
             self.last_line_count = len(rows)
 
             # Update statistics (using full rows with WindowDetails for calculations)
             self.update_statistics(rows)
+
+            # --- Restore selection and focus ---
+            if item_id_to_select:
+                self.tree.selection_set(item_id_to_select)
+                self.tree.focus(item_id_to_select)
+                self.tree.see(item_id_to_select)
+
+            # Always call after_idle to ensure focus is set after all UI updates
+            self.tree.after_idle(lambda: self.tree.focus_set())
 
         except Exception as e:
             print(f"Error loading log: {e}")
