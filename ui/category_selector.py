@@ -16,14 +16,14 @@ class CategorySelector:
         self.callback = callback
         
         # Create popup window
-        self.popup = tk.Toplevel(parent)
-        self.popup.title(f"Change Category for '{key}'")
-        self.popup.geometry("350x500")
-        self.popup.resizable(False, True)
+        self.top = tk.Toplevel(parent)
+        self.top.title(f"Change Category for '{key}'")
+        self.top.geometry("350x500")
+        self.top.resizable(False, True)
         
         # Position popup near mouse cursor, but ensure it fits on screen
-        screen_width = self.popup.winfo_screenwidth()
-        screen_height = self.popup.winfo_screenheight()
+        screen_width = self.top.winfo_screenwidth()
+        screen_height = self.top.winfo_screenheight()
         popup_width = 350
         popup_height = 500
 
@@ -39,11 +39,11 @@ class CategorySelector:
         if y + popup_height > screen_height:
             y = screen_height - popup_height - 100  # 10px margin
 
-        self.popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+        self.top.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
         
         # Make popup modal
-        self.popup.transient(parent)
-        self.popup.grab_set()
+        self.top.transient(parent)
+        self.top.grab_set()
         
         self._create_widgets()
         self._setup_bindings()
@@ -53,7 +53,7 @@ class CategorySelector:
         """Create all widgets for the dialog"""
         # Header label
         header_label = tk.Label(
-            self.popup, 
+            self.top, 
             text=f"Select category for: {self.key}",
             font=('Arial', 10, 'bold'),
             pady=10
@@ -62,7 +62,7 @@ class CategorySelector:
         
         # Current category label
         current_label = tk.Label(
-            self.popup,
+            self.top,
             text=f"Current: {self.current_category}",
             font=('Arial', 9),
             fg='blue'
@@ -70,7 +70,7 @@ class CategorySelector:
         current_label.pack()
         
         # New category input frame
-        new_category_frame = tk.Frame(self.popup)
+        new_category_frame = tk.Frame(self.top)
         new_category_frame.pack(fill=tk.X, padx=10, pady=(5, 10))
         
         # New category label and entry
@@ -90,13 +90,13 @@ class CategorySelector:
         
         # Create listbox with scrollbar
         list_label = tk.Label(
-            self.popup,
+            self.top,
             text="Or select existing category:",
             font=('Arial', 9)
         )
         list_label.pack(anchor=tk.W, padx=10)
         
-        list_frame = tk.Frame(self.popup)
+        list_frame = tk.Frame(self.top)
         list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(5, 10))
         
         scrollbar = tk.Scrollbar(list_frame)
@@ -126,7 +126,7 @@ class CategorySelector:
             self.current_index = -1
 
         # Buttons frame
-        button_frame = tk.Frame(self.popup)
+        button_frame = tk.Frame(self.top)
         button_frame.pack(pady=10)
     
         # Change button
@@ -176,7 +176,7 @@ class CategorySelector:
     
         self.listbox.bind('<Double-Button-1>', on_double_click)
         self.new_category_entry.bind('<Return>', lambda e: self._on_change())
-        self.popup.bind('<Key>', on_key_press)
+        self.top.bind('<Key>', on_key_press)
 
     def _set_initial_focus(self):
         """Set initial focus based on whether current category was found"""
@@ -208,19 +208,19 @@ class CategorySelector:
         selected_category = self._get_selected_category()
         if selected_category:
             self.callback(self.key, selected_category)
-            self.popup.destroy()
+            self.top.destroy()
         else:
             # Show error message
             error_label = tk.Label(
-                self.popup,
+                self.top,
                 text="Please select a category or enter a new one",
                 fg='red',
                 font=('Arial', 8)
             )
             error_label.pack()
             # Remove error after 3 seconds
-            self.popup.after(3000, error_label.destroy)
+            self.top.after(3000, error_label.destroy)
 
     def _on_cancel(self):
         """Handle cancel button click"""
-        self.popup.destroy()
+        self.top.destroy()

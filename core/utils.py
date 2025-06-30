@@ -66,3 +66,68 @@ def format_duration(total_seconds):
     minutes = int((total_seconds % 3600) // 60)
     seconds = int(total_seconds % 60)
     return f"{days:02d} {hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+class ExeVersionInfo:
+    """Singleton-like class to read and cache version info from the EXE."""
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self):
+        if self._initialized:
+            return
+        import pefile
+        import os
+        import sys
+
+        # Use the running executable if frozen, else use dist/ActivityLogger.exe
+        if getattr(sys, 'frozen', False):
+            exe_path = sys.executable
+        else:
+            exe_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dist', 'ActivityLogger.exe'))
+
+        self.version = "dev"
+        self.build_date = ""
+        self.build_time = ""
+        if os.path.exists(exe_path):
+            try:
+                pe = pefile.PE(exe_path)
+                if hasattr(pe, 'FileInfo'):
+                    for fileinfo in pe.FileInfo:
+                        if isinstance(fileinfo, list):
+                            for subinfo in fileinfo:
+                                if hasattr(subinfo, 'Key') and subinfo.Key == b'StringFileInfo':
+                                    for st in subinfo.StringTable:
+                                        entries = st.entries
+                                        entries = {k.decode() if isinstance(k, bytes) else k:
+                                                   v.decode() if isinstance(v, bytes) else v
+                                                   for k, v in entries.items()}
+                                        self.version = entries.get('FileVersion', 'dev')
+                                        self.build_date = entries.get('BuildDate', '')
+                                        self.build_time = entries.get('BuildTime', '')
+                        elif hasattr(fileinfo, 'Key') and fileinfo.Key == b'StringFileInfo':
+                            for st in fileinfo.StringTable:
+                                entries = st.entries
+                                entries = {k.decode() if isinstance(k, bytes) else k:
+                                           v.decode() if isinstance(v, bytes) else v
+                                           for k, v in entries.items()}
+                                self.version = entries.get('FileVersion', 'dev')
+                                self.build_date = entries.get('BuildDate', '')
+                                self.build_time = entries.get('BuildTime', '')
+            except Exception:
+                pass
+        self._initialized = True
+
+    def get_version(self):
+        return self.version
+
+    def get_build_date(self):
+        return self.build_date
+
+    def get_build_time(self):
+        return self.build_time

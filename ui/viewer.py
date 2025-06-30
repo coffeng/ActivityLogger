@@ -6,13 +6,15 @@ import csv
 import datetime
 import tkinter as tk
 from tkinter import ttk
-from core.utils import format_duration
+from core.utils import format_duration, ExeVersionInfo
 from .category_selector import CategorySelector
 import matplotlib
 matplotlib.use('Agg')  # Use a non-interactive backend for safety
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pandas as pd
+import sys
+import pefile
 
 
 class LogViewer:
@@ -48,7 +50,13 @@ class LogViewer:
 
         # Create main window
         self.root = tk.Tk()
-        self.root.title(f"Activity Log Viewer - {os.path.basename(log_path)}")
+        version_info = ExeVersionInfo()
+        version = version_info.get_version()
+        build_date = version_info.get_build_date()
+        build_time = version_info.get_build_time()
+        self.root.title(
+            f"Activity Log Viewer - {os.path.basename(log_path)} | Build {version} {build_date} {build_time}"
+        )
         self.root.geometry("1200x700")
         
         # Handle window close event
@@ -798,3 +806,5 @@ class LogViewer:
             del LogViewer._instances[self.log_path]
         if self.root:
             self.root.destroy()
+
+

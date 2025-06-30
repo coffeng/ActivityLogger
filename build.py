@@ -7,6 +7,8 @@ import subprocess
 import shutil
 import time
 from pathlib import Path
+import datetime
+import re
 
 def find_existing_icon():
     """Find existing icon files in ActivityLogger and related directories"""
@@ -139,16 +141,10 @@ def create_icon_if_missing():
             return False
     return True
 
-def copy_to_startup_and_run(exe_path):
-    """Copy executable to Start Menu. Kill running instance first, no prompts."""
+def kill_if_active():
+   
     try:
-        import shutil
         import psutil
-
-        # Get the Startup folder path
-        startup_folder = Path.home() / "AppData" / "Roaming" / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
-        startup_folder.mkdir(parents=True, exist_ok=True)
-        startup_exe_path = startup_folder / "ActivityLogger.exe"
 
         # Kill running ActivityLogger.exe processes before copying
         killed = False
@@ -176,16 +172,66 @@ def copy_to_startup_and_run(exe_path):
             else:
                 print("Warning: ActivityLogger.exe may still be running.")
 
-        # Copy the executable
-        print(f"Copying to Startup folder: {startup_exe_path}")
-        shutil.copy2(exe_path, startup_exe_path)
-        print(f"Successfully copied ActivityLogger.exe to Startup folder")
 
         return True
 
     except Exception as e:
-        print(f"Error copying to Startup folder: {e}")
+        print(f"Error Stopping current instance: {e}")
         return False
+
+def write_version_info(build_number, build_date, build_time):
+    content = f"""VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=({build_number.replace('.', ',')}, 0),
+    prodvers=({build_number.replace('.', ',')}, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x4,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+    ),
+  kids=[
+    StringFileInfo([
+      StringTable(
+        '040904B0',
+        [StringStruct('CompanyName', 'Your Company'),
+        StringStruct('FileDescription', 'Activity Logger'),
+        StringStruct('FileVersion', '{build_number}'),
+        StringStruct('ProductVersion', '{build_number}'),
+        StringStruct('BuildDate', '{build_date}'),
+        StringStruct('BuildTime', '{build_time}')]
+        )
+      ]),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])])
+  ]
+)
+"""
+    with open("version_info.txt", "w", encoding="utf-8") as f:
+        f.write(content)
+
+def read_previous_build_number(version_file="version_info.txt"):
+    if not os.path.exists(version_file):
+        return "1.0.0"
+    with open(version_file, "r", encoding="utf-8") as f:
+        content = f.read()
+    match = re.search(r"FileVersion', '([\d\.]+)'", content)
+    if match:
+        return match.group(1)
+    return "1.0.0"
+
+def increment_build_number(build_number):
+    parts = [int(x) for x in build_number.split('.')]
+    parts[-1] += 1
+    return '.'.join(str(x) for x in parts)
+
+# Example usage:
+previous_build = read_previous_build_number()
+build_number = increment_build_number(previous_build)
+now = datetime.datetime.now()
+build_date = now.strftime("%Y-%m-%d")
+build_time = now.strftime("%H:%M:%S")
+write_version_info(build_number, build_date, build_time)
 
 def main():
     """Build ActivityLogger.exe"""
@@ -266,8 +312,9 @@ def main():
         "--windowed",        # Hide console window (for GUI apps)
         "--name=ActivityLogger",
         "--add-data=core;core",
-        "--add-data=ui;ui", 
+        "--add-data=ui;ui",
         "--add-data=tray;tray",
+        "--version-file=version_info.txt",  # <-- Add this line
         "--hidden-import=pystray._win32",
         "--hidden-import=PIL._tkinter_finder",
         "--hidden-import=tkinter",
@@ -347,13 +394,8 @@ def main():
             except Exception as e:
                 print(f"Error running signtool: {e}")
 
+        kill_if_active()
 
-
-        # Copy to Startup folder and run
-        print()
-        print("=" * 60)
-        copy_to_startup_and_run(exe_path)
-        print("=" * 60)
            
     except subprocess.CalledProcessError as e:
         print(f"Build failed with return code {e.returncode}")
