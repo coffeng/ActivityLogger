@@ -3,7 +3,7 @@
 ActivityLogger is a Windows desktop application that automatically tracks your computer activity by monitoring active windows and logging usage data to a CSV file. The application runs in the system tray and provides a simple interface for viewing, analyzing, and exporting your activity logs.
 
 René Coffeng, 28 June 2025
-
+Last edit: 22 July 2024
 ## Features
 
 - **Automatic Activity Logging:** Monitors active windows and records application usage, window titles, and idle time.
@@ -13,7 +13,7 @@ René Coffeng, 28 June 2025
 - **Exportable Logs:** Logs are saved as CSV files, compatible with Excel, Power BI, and other tools.
 - **Custom Categories:** Supports categorization of activities for better analysis.
 - **Startup Integration:** Optionally copies itself to the Windows Startup folder for automatic launch.
-- **Help & Troubleshooting:** Built-in help viewer for usage tips and troubleshooting.
+- **Help:** Built-in help viewer for usage tips.
 
 ## Usage
 
@@ -37,7 +37,7 @@ René Coffeng, 28 June 2025
 - [Pillow](https://python-pillow.org/) (for icon generation)
 - [psutil](https://pypi.org/project/psutil/) (for process checks)
 
-## Building
+## Building and Running
 
 To build the executable, run:
 ```sh
@@ -52,3 +52,22 @@ This project is provided as-is for personal productivity and research purposes.
 ---
 
 For more information, see the source code comments or use the built-in Help menu.
+
+To run the application after building, simply execute ActivityLogger.exe from the dist directory. The application will start and place an icon in the system tray. Right-clicking the icon provides access to the application's functions, including starting/stopping logging, viewing the log, and exiting. + +## Project Structure + +The project is organized into a modular structure, separating core logic, UI, and system tray management. + +* main.py: The main entry point of the application. It initializes the ActivityLogger and the TrayManager, connecting the core logic to the user-facing tray interface. + +* build.py: A comprehensive build script that automates the creation of the final executable using PyInstaller. Its responsibilities include:
+
+Automatically finding or generating an application icon (icon.ico).
+Incrementing the build version number and writing it to version_info.txt.
+Running PyInstaller with the necessary configurations, hidden imports, and data files.
+Optionally signing the final .exe with signtool.
++* core/: This package contains the fundamental logic of the application.
+
+logger.py: Likely contains the ActivityLogger class, which is responsible for monitoring the active window (win32gui), tracking application names and titles, calculating idle time, and writing the data to the CSV log file.
++* tray/: This package manages all system tray interactions.
+
+tray_manager.py: Contains the TrayManager class. This class uses pystray to create the icon and the context menu (Start/Stop, View Log, etc.). It acts as the controller, translating user actions from the tray menu into calls to the ActivityLogger instance.
++* ui/: This package holds the graphical user interface components.
+
+Based on the tkinter imports in the build script, this directory likely contains modules for the log viewer and help windows. A log_viewer.py module would be responsible for reading the CSV log and displaying it in a user-friendly, summarized format.
++* create_icon.py: (Inferred from build.py) A utility script that uses the Pillow library to programmatically generate the icon.ico file if one is not found. +
+
+

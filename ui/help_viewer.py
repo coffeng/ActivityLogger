@@ -71,7 +71,7 @@ For more information or support, check the source code comments.
         ok_button = tk.Button(
             self.root, 
             text="OK", 
-            command=self.root.destroy,
+            command=self.on_close,
             width=10
         )
         ok_button.pack(pady=10)
@@ -79,5 +79,13 @@ For more information or support, check the source code comments.
         # Center the window
         self.root.transient()
         self.root.grab_set()
+
+        # Handle window close from 'X' button
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         
         self.root.mainloop()
+
+    def on_close(self):
+        """Stop the event loop and destroy the window."""
+        self.root.quit()
+        self.root.destroy()

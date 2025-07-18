@@ -804,7 +804,6 @@ class LogViewer:
         # Remove from instances when closed
         if not self.is_duplicate and self.log_path in LogViewer._instances:
             del LogViewer._instances[self.log_path]
-        if self.root:
-            self.root.destroy()
-
-
+        if self.root and self.root.winfo_exists():
+            self.root.quit()  # Explicitly stop the event loop
+            self.root.destroy() # Then destroy the window and its widgets
