@@ -1,0 +1,8 @@
+PyInstaller
+pystray
+Pillow
+pywin32
+psutil
+matplotlib
+pandas
+pefile

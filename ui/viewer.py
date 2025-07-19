@@ -47,6 +47,7 @@ class LogViewer:
         self.sort_reverse = False
         self.summary_sort_column = None
         self.summary_sort_reverse = False
+        self._is_initial_load = True
 
         # Create main window
         self.root = tk.Tk()
@@ -58,7 +59,7 @@ class LogViewer:
             f"Activity Log Viewer - {os.path.basename(log_path)} | Build {version} {build_date} {build_time}"
         )
         self.root.geometry("1200x700")
-        
+
         # Handle window close event
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -94,6 +95,17 @@ class LogViewer:
         self.load_summary()
         self.update_recording_button()
         self.root.after(self.refresh_interval, self.refresh_data)
+
+        # A more robust method to grab focus, especially when opened from the tray.
+        # We schedule this to run after the window has had a moment to be drawn.
+        def grab_focus():
+            """Force window to front and grab input focus."""
+            self.root.deiconify() # Ensure window is not minimized
+            self.root.lift()
+            self.root.attributes('-topmost', True)
+            self.root.after_idle(self.root.attributes, '-topmost', False)
+            self.root.focus_force()
+        self.root.after(100, grab_focus)
 
         # Only start mainloop if this is the first LogViewer instance
         if len(LogViewer._instances) == 1:
@@ -646,12 +658,15 @@ class LogViewer:
 
             # Insert new rows (most recent first) - excluding WindowDetails column
             item_id_to_select = None
-            for row in rows:
+            first_item_id = None
+            for i, row in enumerate(rows):
                 if windowdetails_index >= 0 and len(row) > windowdetails_index:
                     display_row = row[:windowdetails_index] + row[windowdetails_index + 1:]
                 else:
                     display_row = row
                 item_id = self.tree.insert("", "end", values=display_row)
+                if i == 0:
+                    first_item_id = item_id
                 # --- Restore selection if key matches ---
                 if selected_key and tuple(display_row[:2]) == selected_key:
                     item_id_to_select = item_id
@@ -662,7 +677,14 @@ class LogViewer:
             self.update_statistics(rows)
 
             # --- Restore selection and focus ---
-            if item_id_to_select:
+            if self._is_initial_load and first_item_id:
+                # On initial load, select and focus the top item (most recent entry)
+                self.tree.selection_set(first_item_id)
+                self.tree.focus(first_item_id)
+                self.tree.see(first_item_id)
+                self._is_initial_load = False  # Unset flag for subsequent refreshes
+            elif item_id_to_select:
+                # On refresh, restore the previously selected item
                 self.tree.selection_set(item_id_to_select)
                 self.tree.focus(item_id_to_select)
                 self.tree.see(item_id_to_select)

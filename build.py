@@ -325,8 +325,11 @@ def main():
         "--hidden-import=win32con",
         "--hidden-import=win32api",
         "--hidden-import=psutil",
+        "--hidden-import=pefile",
         "--collect-all=pystray",
         "--collect-all=PIL",
+        "--collect-all=matplotlib",
+        "--collect-all=pandas",
     ]
 
     # Only use --icon if you trust your .ico file

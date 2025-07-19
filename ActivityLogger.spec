@@ -3,15 +3,19 @@ from PyInstaller.utils.hooks import collect_all
 
 datas = [('core', 'core'), ('ui', 'ui'), ('tray', 'tray')]
 binaries = []
-hiddenimports = ['pystray._win32', 'PIL._tkinter_finder', 'tkinter', 'tkinter.ttk', 'tkinter.scrolledtext', 'win32gui', 'win32process', 'win32con', 'win32api', 'psutil']
+hiddenimports = ['pystray._win32', 'PIL._tkinter_finder', 'tkinter', 'tkinter.ttk', 'tkinter.scrolledtext', 'win32gui', 'win32process', 'win32con', 'win32api', 'psutil', 'pefile']
 tmp_ret = collect_all('pystray')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('PIL')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('matplotlib')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('pandas')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    ['C:\\Users\\100014430\\Documents\\GitHub\\coffeng\\ActivityLogger\\main.py'],
+    ['C:\\Users\\renec\\Documents\\GitHub\\ActivityLogger\\main.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,
@@ -45,5 +49,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     version='version_info.txt',
-    icon=['C:\\Users\\100014430\\Documents\\GitHub\\coffeng\\ActivityLogger\\icon.ico'],
+    icon=['C:\\Users\\renec\\Documents\\GitHub\\ActivityLogger\\icon.ico'],
 )

@@ -95,6 +95,17 @@ For more information or support, check the source code comments.
         # Handle window close from 'X' button
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         
+        # If opened standalone (from tray), force focus using a robust method
+        if not self.has_parent:
+            def grab_focus():
+                """Force window to front and grab input focus."""
+                self.root.deiconify()
+                self.root.lift()
+                self.root.attributes('-topmost', True)
+                self.root.after_idle(self.root.attributes, '-topmost', False)
+                self.root.focus_force()
+            self.root.after(100, grab_focus)
+
         # Only call mainloop if no parent (called from tray)
         if not self.has_parent:
             self.root.mainloop()
