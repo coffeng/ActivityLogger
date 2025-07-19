@@ -8,8 +8,19 @@ from tkinter import scrolledtext
 class HelpViewer:
     """Help dialog window"""
     
-    def __init__(self, log_path):
-        self.root = tk.Tk()
+    def __init__(self, parent_or_log_path, log_path=None):
+        # Handle both cases: HelpViewer(parent, log_path) and HelpViewer(log_path)
+        if log_path is None:
+            # Called with just log_path (from tray)
+            self.root = tk.Tk()
+            log_path = parent_or_log_path
+            self.has_parent = False
+        else:
+            # Called with parent and log_path (from viewer)
+            self.root = tk.Toplevel(parent_or_log_path)
+            self.has_parent = True
+            self.parent = parent_or_log_path
+            
         self.root.title("Activity Logger Help")
         self.root.geometry("600x500")
         
@@ -77,15 +88,37 @@ For more information or support, check the source code comments.
         ok_button.pack(pady=10)
         
         # Center the window
-        self.root.transient()
-        self.root.grab_set()
+        if self.has_parent:
+            self.root.transient(self.parent)
+            self.root.grab_set()
 
         # Handle window close from 'X' button
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         
-        self.root.mainloop()
+        # Only call mainloop if no parent (called from tray)
+        if not self.has_parent:
+            self.root.mainloop()
 
     def on_close(self):
-        """Stop the event loop and destroy the window."""
-        self.root.quit()
-        self.root.destroy()
+        """Handle window close event"""
+        try:
+            # Force withdraw the window first
+            self.root.withdraw()
+            
+            # Always try to quit mainloop (like OK button does)
+            try:
+                self.root.quit()
+            except Exception:
+                pass
+            
+            # Destroy the window and all widgets
+            self.root.destroy()
+            
+        except Exception as e:
+            print(f"Error in help_viewer on_close: {e}")
+            try:
+                if hasattr(self, 'root') and self.root:
+                    self.root.quit()
+                    self.root.destroy()
+            except Exception:
+                pass

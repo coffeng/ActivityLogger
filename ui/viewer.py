@@ -95,8 +95,9 @@ class LogViewer:
         self.update_recording_button()
         self.root.after(self.refresh_interval, self.refresh_data)
 
-        # Start the main loop
-        self.root.mainloop()
+        # Only start mainloop if this is the first LogViewer instance
+        if len(LogViewer._instances) == 1:
+            self.root.mainloop()
 
     def setup_activity_tab(self):
         """Setup the Activity Log tab"""
@@ -211,6 +212,31 @@ class LogViewer:
             font=('Arial', 9)
         )
         self.folder_btn.pack(side=tk.LEFT, padx=5)
+
+        # Close button
+        self.close_btn = tk.Button(
+            buttons_frame, 
+            text="Close", 
+            command=self.close_window,
+            width=12,
+            height=1,
+            font=('Arial', 9)
+        )
+        self.close_btn.pack(side=tk.LEFT, padx=5)
+
+    def close_window(self):
+        """Simple, direct close method like OK button behavior"""
+        try:
+            # Remove from instances when closed
+            if not self.is_duplicate and self.log_path in LogViewer._instances:
+                del LogViewer._instances[self.log_path]
+                
+            # Simple direct approach: withdraw, quit, destroy
+            self.root.withdraw()
+            self.root.quit()
+            self.root.destroy()
+        except Exception as e:
+            print(f"Error closing window: {e}")
 
     def on_summary_right_click(self, event):
         """Handle right-click on summary tree rows"""
@@ -800,10 +826,6 @@ class LogViewer:
             self.root.after(self.refresh_interval, self.refresh_data)
 
     def on_close(self):
-        """Handle window close event"""
-        # Remove from instances when closed
-        if not self.is_duplicate and self.log_path in LogViewer._instances:
-            del LogViewer._instances[self.log_path]
-        if self.root and self.root.winfo_exists():
-            self.root.quit()  # Explicitly stop the event loop
-            self.root.destroy() # Then destroy the window and its widgets
+        """Handle window close event - use same method as Close button"""
+        # Since the Close button works reliably, just use the same method
+        self.close_window()
