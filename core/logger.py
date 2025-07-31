@@ -57,6 +57,12 @@ class ActivityLogger:
 
         # For idle detection
         self.idle_check_interval = 5  # Check idle every 5 seconds
+        
+        # Backfill any missing computer names in existing log file
+        self._backfill_done = False
+        if os.path.exists(self.log_path):
+            self.backfill_computer_names()
+            self._backfill_done = True
 
     def save_app_categories(self):
         """Save app categories using config manager"""
@@ -128,16 +134,95 @@ class ActivityLogger:
             return millis / 1000.0
         return 0
 
+    def get_computer_name_from_filename(self):
+        """Extract computer name from log filename"""
+        filename = os.path.basename(self.log_path)
+        if filename.endswith('_ActivityLog.csv'):
+            return filename[:-len('_ActivityLog.csv')]
+        return 'Unknown'
+
+    def backfill_computer_names(self):
+        """Backfill empty computer names in existing CSV entries"""
+        if not os.path.exists(self.log_path):
+            return 0
+        
+        computer_name = self.get_computer_name_from_filename()
+        updated_count = 0
+        
+        try:
+            # Read all rows
+            with open(self.log_path, 'r', encoding='utf-8') as f:
+                reader = list(csv.reader(f))
+            
+            if not reader:
+                return 0
+                
+            headers = reader[0]
+            rows = reader[1:]
+            
+            # Check if ComputerName column exists
+            computer_name_index = -1
+            try:
+                computer_name_index = headers.index('ComputerName')
+            except ValueError:
+                # ComputerName column doesn't exist, add it
+                headers.append('ComputerName')
+                computer_name_index = len(headers) - 1
+                print(f"Added ComputerName column at index {computer_name_index}")
+            
+            # Update rows with empty or missing ComputerName
+            for row in rows:
+                if len(row) > computer_name_index:
+                    if not row[computer_name_index] or row[computer_name_index].strip() == '':
+                        row[computer_name_index] = computer_name
+                        updated_count += 1
+                elif len(row) == computer_name_index:
+                    # Row is missing the ComputerName column entirely
+                    row.append(computer_name)
+                    updated_count += 1
+                else:
+                    # Row is shorter than expected, pad with empty strings and add computer name
+                    while len(row) < computer_name_index:
+                        row.append('')
+                    row.append(computer_name)
+                    updated_count += 1
+            
+            # Write back to file (always write if ComputerName column was added)
+            if updated_count > 0 or computer_name_index == len(headers) - 1:
+                with open(self.log_path, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(headers)
+                    writer.writerows(rows)
+                
+                if updated_count > 0:
+                    print(f"Backfilled {updated_count} entries with computer name '{computer_name}'")
+                else:
+                    print(f"Added ComputerName column to existing {len(rows)} entries")
+            
+            return updated_count
+            
+        except Exception as e:
+            print(f"Error backfilling computer names: {e}")
+            return 0
+
     def log_activity(self, start, end, window, proc, details, category):
         """Log an activity to the CSV file"""
         duration = int((end - start).total_seconds())
+        computer_name = self.get_computer_name_from_filename()
+        
         file_exists = os.path.isfile(self.log_path)
+        
+        # Backfill missing computer names if this is the first write and not done yet
+        if file_exists and not getattr(self, '_backfill_done', False):
+            self.backfill_computer_names()
+            self._backfill_done = True
+        
         with open(self.log_path, "a", newline='', encoding="utf-8") as f:
             writer = csv.writer(f)
             if not file_exists:
                 writer.writerow([
                     "StartTime", "EndTime", "DurationSeconds", "WindowTitle", 
-                    "WindowDetails", "ProcessName", "Category"
+                    "WindowDetails", "ProcessName", "Category", "ComputerName"
                 ])
             writer.writerow([
                 start.strftime("%Y-%m-%d %H:%M:%S"),
@@ -146,7 +231,8 @@ class ActivityLogger:
                 window,
                 details,
                 proc,
-                category
+                category,
+                computer_name
             ])
         
         # Increment row counter and save config if needed
