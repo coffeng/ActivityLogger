@@ -49,5 +49,6 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     version='version_info.txt',
+    uac_admin=True,
     icon=['C:\\Users\\100014430\\Documents\\GitHub\\coffeng\\ActivityLogger\\icon.ico'],
 )
