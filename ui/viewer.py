@@ -601,6 +601,46 @@ class LogViewer:
             print(f"Error loading ActivitySummary.csv: {e}")
             self.summary_info_label.config(text=f"Error loading ActivitySummary.csv: {e}")
 
+    def get_computer_name_from_filename(self):
+        """Extract computer name from log filename"""
+        filename = os.path.basename(self.log_path)
+        if filename.endswith('_ActivityLog.csv'):
+            return filename[:-len('_ActivityLog.csv')]
+        return 'Unknown'
+
+    def backfill_computer_names_in_viewer(self, headers, rows):
+        """Backfill empty computer names in CSV data and save if needed"""
+        if 'ComputerName' not in headers:
+            return rows  # No ComputerName column, nothing to backfill
+        
+        computer_name = self.get_computer_name_from_filename()
+        computer_name_index = headers.index('ComputerName')
+        updated_count = 0
+        
+        # Check and update rows with empty ComputerName
+        for row in rows:
+            if len(row) > computer_name_index:
+                if not row[computer_name_index] or row[computer_name_index].strip() == '':
+                    row[computer_name_index] = computer_name
+                    updated_count += 1
+            elif len(row) == computer_name_index:
+                # Row is missing the ComputerName column entirely
+                row.append(computer_name)
+                updated_count += 1
+        
+        # If we made changes, save the file
+        if updated_count > 0:
+            try:
+                with open(self.log_path, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(headers)
+                    writer.writerows(rows)
+                print(f"Backfilled {updated_count} entries with computer name '{computer_name}' in viewer")
+            except Exception as e:
+                print(f"Error saving backfilled data: {e}")
+        
+        return rows
+
     def load_log(self):
         """Load activity log data"""
         if not os.path.exists(self.log_path):
@@ -635,6 +675,10 @@ class LogViewer:
                         return
                     headers = reader[0]
                     rows = reader[1:]
+                
+                # Backfill any missing computer names
+                rows = self.backfill_computer_names_in_viewer(headers, rows)
+                
                 self._last_log_mtime = mtime
                 self._last_log_data = (headers, rows)
 
@@ -651,7 +695,21 @@ class LogViewer:
             for col in display_headers:
                 self.tree.heading(col, text=col, 
                                 command=lambda c=col: self.on_activity_heading_click(c))
-                self.tree.column(col, width=150, anchor="w")
+                # Set column widths based on content
+                if col == "StartTime" or col == "EndTime":
+                    self.tree.column(col, width=130, anchor="w")
+                elif col == "DurationSeconds":
+                    self.tree.column(col, width=100, anchor="center")
+                elif col == "WindowTitle":
+                    self.tree.column(col, width=250, anchor="w")
+                elif col == "ProcessName":
+                    self.tree.column(col, width=120, anchor="w")
+                elif col == "Category":
+                    self.tree.column(col, width=120, anchor="w")
+                elif col == "ComputerName":
+                    self.tree.column(col, width=100, anchor="w")
+                else:
+                    self.tree.column(col, width=150, anchor="w")
 
             # Remove all old rows
             self.tree.delete(*self.tree.get_children())

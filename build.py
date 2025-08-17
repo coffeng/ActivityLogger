@@ -307,9 +307,10 @@ def main():
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--onefile",
-        #"--clean",           # Remove temporary files before building
+        "--clean",           # Remove temporary files before building
         "--noconfirm",       # Replace output directory without asking
         "--windowed",        # Hide console window (for GUI apps)
+        "--uac-admin",       # Request admin privileges if needed
         "--name=ActivityLogger",
         "--add-data=core;core",
         "--add-data=ui;ui",
