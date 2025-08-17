@@ -1,5 +1,5 @@
 """
-Log viewer window
+Log viewer window 
 """
 import os
 import csv

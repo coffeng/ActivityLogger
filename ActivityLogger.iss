@@ -1,7 +1,9 @@
 [Setup] 
 AppName=ActivityLogger
 AppVersion=1.0
-DefaultDirName={commonpf}\ActivityLogger
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=dialog
+DefaultDirName={autopf}\ActivityLogger
 OutputDir=.
 OutputBaseFilename=ActivityLogger_Setup
 
@@ -14,7 +16,10 @@ Source: "README.md"; DestDir: "{app}"
 
 
 [Icons]
+Name: "{commonprograms}\ActivityLogger"; Filename: "{app}\ActivityLogger.exe"
 Name: "{commondesktop}\ActivityLogger"; Filename: "{app}\ActivityLogger.exe"
 Name: "{commonstartup}\ActivityLogger"; Filename: "{app}\ActivityLogger.exe"
-; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
+[Run]
+Filename: "{app}\ActivityLogger.exe"; Description: "{cm:LaunchProgram,ActivityLogger}"; Flags: nowait postinstall
+; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!

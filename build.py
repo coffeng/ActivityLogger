@@ -179,6 +179,31 @@ def kill_if_active():
         print(f"Error Stopping current instance: {e}")
         return False
 
+def convert_png_to_ico(png_path, ico_path):
+    """Converts a PNG image to a multi-resolution ICO file."""
+    try:
+        from PIL import Image
+    except ImportError:
+        print("Error: Pillow is not installed. Please run 'pip install pillow'.")
+        return False
+
+    if not png_path.exists():
+        print(f"Error: PNG source file not found at '{png_path}'")
+        return False
+
+    try:
+        img = Image.open(png_path)
+        # Define standard icon sizes for a high-quality .ico file
+        icon_sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+
+        # The 'bitmap_format' argument allows for larger icons with transparency
+        img.save(ico_path, format='ICO', sizes=icon_sizes, bitmap_format='PNG')
+        print(f"Successfully converted '{png_path.name}' to '{ico_path.name}' with multiple resolutions.")
+        return True
+    except Exception as e:
+        print(f"Error converting PNG to ICO: {e}")
+        return False
+
 def write_version_info(build_number, build_date, build_time):
     content = f"""VSVersionInfo(
   ffi=FixedFileInfo(
@@ -280,8 +305,22 @@ def main():
         print(f"Error: {main_py} not found!")
         return 1
     
-    # Handle icon
-    has_icon = create_icon_if_missing()
+    # --- MODIFIED ICON HANDLING ---
+    # Handle icon by converting the high-resolution PNG preview.
+    # This ensures the .ico file used by the installer is always high quality.
+    preview_png_path = current_dir / "icon_preview.png"
+    has_icon = False
+    print(f"\n--- Handling Icon ---")
+    if preview_png_path.exists():
+        print(f"Found '{preview_png_path.name}'. Converting to high-resolution '{icon_path.name}'...")
+        if convert_png_to_ico(preview_png_path, icon_path):
+            has_icon = True
+        else:
+            print(f"Warning: Failed to convert '{preview_png_path.name}'. Falling back to old method.")
+            has_icon = create_icon_if_missing()
+    else:
+        print(f"'{preview_png_path.name}' not found. Using existing icon creation logic.")
+        has_icon = create_icon_if_missing()
     
     # Skip cleaning directories for faster builds
     print("Skipping directory cleanup for faster builds...")
@@ -310,7 +349,6 @@ def main():
         "--clean",           # Remove temporary files before building
         "--noconfirm",       # Replace output directory without asking
         "--windowed",        # Hide console window (for GUI apps)
-        "--uac-admin",       # Request admin privileges if needed
         "--name=ActivityLogger",
         "--add-data=core;core",
         "--add-data=ui;ui",

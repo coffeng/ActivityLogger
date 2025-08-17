@@ -15,7 +15,7 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    ['C:\\Users\\100014430\\Documents\\GitHub\\coffeng\\ActivityLogger\\main.py'],
+    ['C:\\Users\\renec\\Documents\\GitHub\\ActivityLogger\\main.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,
@@ -49,6 +49,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     version='version_info.txt',
-    uac_admin=True,
-    icon=['C:\\Users\\100014430\\Documents\\GitHub\\coffeng\\ActivityLogger\\icon.ico'],
+    icon=['C:\\Users\\renec\\Documents\\GitHub\\ActivityLogger\\icon.ico'],
 )
