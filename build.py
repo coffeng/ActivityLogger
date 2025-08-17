@@ -353,6 +353,7 @@ def main():
         "--add-data=core;core",
         "--add-data=ui;ui",
         "--add-data=tray;tray",
+        "--add-data=icon_preview.png;.",
         "--version-file=version_info.txt",  # <-- Add this line
         "--hidden-import=pystray._win32",
         "--hidden-import=PIL._tkinter_finder",

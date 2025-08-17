@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('core', 'core'), ('ui', 'ui'), ('tray', 'tray')]
+datas = [('core', 'core'), ('ui', 'ui'), ('tray', 'tray'), ('icon_preview.png', '.')]
 binaries = []
 hiddenimports = ['pystray._win32', 'PIL._tkinter_finder', 'tkinter', 'tkinter.ttk', 'tkinter.scrolledtext', 'win32gui', 'win32process', 'win32con', 'win32api', 'psutil', 'pefile']
 tmp_ret = collect_all('pystray')
@@ -15,7 +15,7 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    ['C:\\Users\\renec\\Documents\\GitHub\\ActivityLogger\\main.py'],
+    ['C:\\Users\\100014430\\Documents\\GitHub\\coffeng\\ActivityLogger\\main.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,
@@ -49,5 +49,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     version='version_info.txt',
-    icon=['C:\\Users\\renec\\Documents\\GitHub\\ActivityLogger\\icon.ico'],
+    icon=['C:\\Users\\100014430\\Documents\\GitHub\\coffeng\\ActivityLogger\\icon.ico'],
 )

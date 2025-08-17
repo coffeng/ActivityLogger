@@ -9,7 +9,8 @@ class HelpViewer:
     """Help dialog window"""
     
     def __init__(self, parent_or_log_path, log_path=None):
-        # Handle both cases: HelpViewer(parent, log_path) and HelpViewer(log_path)
+        # Handle both cases: HelpViewer(parent, log_path)
+        # and HelpViewer(log_path)
         if log_path is None:
             # Called with just log_path (from tray)
             self.root = tk.Tk()
@@ -20,11 +21,14 @@ class HelpViewer:
             self.root = tk.Toplevel(parent_or_log_path)
             self.has_parent = True
             self.parent = parent_or_log_path
-            
+
         self.root.title("Activity Logger Help")
         self.root.geometry("600x500")
-        
+
         # Help text
+        resolved_log_path = log_path or ""
+        show_log_location = bool(resolved_log_path)
+
         help_text = f"""
 Activity Logger - Help
 
@@ -45,8 +49,7 @@ FEATURES:
 • Real-time viewing - see your activity as it's logged
 • Statistics - shows session duration, total logged time, and idle time
 
-LOG LOCATION:
-{log_path}
+{('LOG LOCATION:\n' + resolved_log_path + '\n') if show_log_location else ''}
 
 USAGE TIPS:
 
@@ -68,8 +71,8 @@ For more information or support, check the source code comments.
         
         # Create scrolled text widget
         text_widget = scrolledtext.ScrolledText(
-            self.root, 
-            wrap=tk.WORD, 
+            self.root,
+            wrap=tk.WORD,
             font=('Arial', 10),
             padx=10,
             pady=10
@@ -80,8 +83,8 @@ For more information or support, check the source code comments.
         
         # OK button
         ok_button = tk.Button(
-            self.root, 
-            text="OK", 
+            self.root,
+            text="OK",
             command=self.on_close,
             width=10
         )

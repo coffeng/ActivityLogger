@@ -1,5 +1,5 @@
 """
-Log viewer window 
+Log viewer window
 """
 import os
 import csv
@@ -13,8 +13,7 @@ matplotlib.use('Agg')  # Use a non-interactive backend for safety
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pandas as pd
-import sys
-import pefile
+from .splash import maybe_show_viewer_splash
 
 
 class LogViewer:
@@ -23,8 +22,11 @@ class LogViewer:
     _instances = {}  # Class variable to track open instances
     
     def __init__(self, log_path):
+        # Track scheduled callbacks so we can cancel on close
+        self._refresh_job = None
         self._last_log_mtime = None
         self._last_log_data = None
+
         # Check if an instance for this log_path already exists
         if log_path in LogViewer._instances:
             existing_viewer = LogViewer._instances[log_path]
@@ -33,12 +35,17 @@ class LogViewer:
                     existing_viewer.root.lift()
                     existing_viewer.root.focus_force()
                     return
-            except:
+            except Exception:
                 # Remove stale reference
-                del LogViewer._instances[log_path]
+                try:
+                    del LogViewer._instances[log_path]
+                except Exception:
+                    pass
 
         self.log_path = log_path
-        self.summary_path = os.path.join(os.path.dirname(log_path), "ActivitySummary.csv")
+        self.summary_path = os.path.join(
+            os.path.dirname(log_path), "ActivitySummary.csv"
+        )
         self.is_duplicate = log_path in LogViewer._instances
         LogViewer._instances[log_path] = self
 
@@ -56,9 +63,21 @@ class LogViewer:
         build_date = version_info.get_build_date()
         build_time = version_info.get_build_time()
         self.root.title(
-            f"Activity Log Viewer - {os.path.basename(log_path)} | Build {version} {build_date} {build_time}"
+            (
+                "Activity Log Viewer - "
+                f"{os.path.basename(log_path)} | Build "
+                f"{version} {build_date} {build_time}"
+            )
         )
         self.root.geometry("1200x700")
+
+        # Schedule splash for viewer (once per day) after UI initializes
+        def _show_splash_once():
+            try:
+                maybe_show_viewer_splash(self.root, self.log_path, duration_ms=5000)
+            except Exception:
+                pass
+        self.root.after(150, _show_splash_once)
 
         # Handle window close event
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -74,17 +93,17 @@ class LogViewer:
         # Create tabs
         self.activity_frame = ttk.Frame(self.notebook)
         self.summary_frame = ttk.Frame(self.notebook)
-        self.graph_frame = ttk.Frame(self.notebook)  # New tab for stacked bar graph
-        
-        # When adding tabs to the notebook, add 2 spaces before and after the tab label
+        self.graph_frame = ttk.Frame(self.notebook)
+
+        # When adding tabs, add 2 spaces before and after the tab label
         self.notebook.add(self.activity_frame, text="  Activity Log  ")
         self.notebook.add(self.summary_frame, text="  Summary  ")
-        self.notebook.add(self.graph_frame, text="  Category Graph  ")  # Add new tab
+        self.notebook.add(self.graph_frame, text="  Category Graph  ")
 
         # Setup tabs
         self.setup_activity_tab()
         self.setup_summary_tab()
-        self.setup_graph_tab()  # Setup the new graph tab
+        self.setup_graph_tab()
 
         # Create footer with statistics
         self.create_footer()
@@ -94,13 +113,12 @@ class LogViewer:
         self.load_log()
         self.load_summary()
         self.update_recording_button()
-        self.root.after(self.refresh_interval, self.refresh_data)
+        self._refresh_job = self.root.after(self.refresh_interval, self.refresh_data)
 
-        # A more robust method to grab focus, especially when opened from the tray.
-        # We schedule this to run after the window has had a moment to be drawn.
+        # Bring to front
         def grab_focus():
             """Force window to front and grab input focus."""
-            self.root.deiconify() # Ensure window is not minimized
+            self.root.deiconify()  # Ensure window is not minimized
             self.root.lift()
             self.root.attributes('-topmost', True)
             self.root.after_idle(self.root.attributes, '-topmost', False)
@@ -239,6 +257,13 @@ class LogViewer:
     def close_window(self):
         """Simple, direct close method like OK button behavior"""
         try:
+            # Cancel any scheduled refresh
+            try:
+                if self._refresh_job is not None:
+                    self.root.after_cancel(self._refresh_job)
+                    self._refresh_job = None
+            except Exception:
+                pass
             # Remove from instances when closed
             if not self.is_duplicate and self.log_path in LogViewer._instances:
                 del LogViewer._instances[self.log_path]
@@ -379,6 +404,12 @@ class LogViewer:
         Only refresh/redraw if window size changed.
         Y axis is in hours. Legend sorted by total duration, with hours shown. Only top 20 processes in legend.
         """
+        # If the graph frame has been destroyed (e.g., during close), bail out
+        try:
+            if not hasattr(self, 'graph_frame') or not self.graph_frame.winfo_exists():
+                return
+        except Exception:
+            return
         # Store previous size to avoid unnecessary redraws
         if not hasattr(self, "_graph_prev_size"):
             self._graph_prev_size = (self.graph_frame.winfo_width(), self.graph_frame.winfo_height())
@@ -526,18 +557,38 @@ class LogViewer:
 
     def load_summary(self):
         """Load ActivitySummary.csv data into the summary tab"""
+        # If widgets are gone (e.g., closing), skip
+        if not hasattr(self, 'summary_info_label') or not hasattr(self, 'summary_tree'):
+            return
+        try:
+            if not self.summary_info_label.winfo_exists() or not self.summary_tree.winfo_exists():
+                return
+        except Exception:
+            return
+
+        def safe_label(text: str):
+            try:
+                if self.summary_info_label.winfo_exists():
+                    self.summary_info_label.config(text=text)
+            except Exception:
+                pass
+
         if not os.path.exists(self.summary_path):
             # Clear the summary tree if file doesn't exist
-            self.summary_tree["columns"] = []
-            self.summary_tree.delete(*self.summary_tree.get_children())
-            self.summary_info_label.config(text="ActivitySummary.csv not found")
+            try:
+                if self.summary_tree.winfo_exists():
+                    self.summary_tree["columns"] = []
+                    self.summary_tree.delete(*self.summary_tree.get_children())
+            except Exception:
+                pass
+            safe_label("ActivitySummary.csv not found")
             return
 
         try:
             with open(self.summary_path, "r", encoding="utf-8") as f:
                 reader = list(csv.reader(f))
                 if not reader:
-                    self.summary_info_label.config(text="ActivitySummary.csv is empty")
+                    safe_label("ActivitySummary.csv is empty")
                     return
 
                 # Skip comment lines and find headers
@@ -559,7 +610,7 @@ class LogViewer:
                         break
 
                 if not headers:
-                    self.summary_info_label.config(text="No valid headers found in ActivitySummary.csv")
+                    safe_label("No valid headers found in ActivitySummary.csv")
                     return
 
                 # Get data rows
@@ -569,37 +620,49 @@ class LogViewer:
                 info_text = "Activity Summary - Categories sorted by total duration (change with right click)"
                 if metadata:
                     info_text += " | " + " | ".join(metadata)
-                self.summary_info_label.config(text=info_text)
+                safe_label(info_text)
 
                 # Set up columns
-                self.summary_tree["columns"] = headers
-                for col in headers:
-                    self.summary_tree.heading(col, text=col)
-                    # Set column widths based on content
-                    if col == "Key":
-                        self.summary_tree.column(col, width=120, anchor="w")
-                    elif col == "Category":
-                        self.summary_tree.column(col, width=150, anchor="w")
-                    elif col == "Count":
-                        self.summary_tree.column(col, width=80, anchor="center")
-                    elif col == "Duration":
-                        self.summary_tree.column(col, width=120, anchor="center")
-                    else:
-                        self.summary_tree.column(col, width=100, anchor="w")
+                try:
+                    if self.summary_tree.winfo_exists():
+                        self.summary_tree["columns"] = headers
+                        for col in headers:
+                            self.summary_tree.heading(col, text=col)
+                            # Set column widths based on content
+                            if col == "Key":
+                                self.summary_tree.column(col, width=120, anchor="w")
+                            elif col == "Category":
+                                self.summary_tree.column(col, width=150, anchor="w")
+                            elif col == "Count":
+                                self.summary_tree.column(col, width=80, anchor="center")
+                            elif col == "Duration":
+                                self.summary_tree.column(col, width=120, anchor="center")
+                            else:
+                                self.summary_tree.column(col, width=100, anchor="w")
+                except Exception:
+                    pass
 
                 # Remove all old rows
-                self.summary_tree.delete(*self.summary_tree.get_children())
+                try:
+                    if self.summary_tree.winfo_exists():
+                        self.summary_tree.delete(*self.summary_tree.get_children())
+                except Exception:
+                    pass
 
                 # Insert data rows (already sorted by duration in the file)
-                for row in rows:
-                    if row and any(cell.strip() for cell in row):  # Skip empty rows
-                        # Pad row with empty strings if it's shorter than headers
-                        padded_row = row + [''] * (len(headers) - len(row))
-                        self.summary_tree.insert("", "end", values=padded_row[:len(headers)])
+                try:
+                    if self.summary_tree.winfo_exists():
+                        for row in rows:
+                            if row and any(cell.strip() for cell in row):  # Skip empty rows
+                                # Pad row with empty strings if it's shorter than headers
+                                padded_row = row + [''] * (len(headers) - len(row))
+                                self.summary_tree.insert("", "end", values=padded_row[:len(headers)])
+                except Exception:
+                    pass
 
         except Exception as e:
             print(f"Error loading ActivitySummary.csv: {e}")
-            self.summary_info_label.config(text=f"Error loading ActivitySummary.csv: {e}")
+            safe_label(f"Error loading ActivitySummary.csv: {e}")
 
     def get_computer_name_from_filename(self):
         """Extract computer name from log filename"""
@@ -881,6 +944,12 @@ class LogViewer:
     def refresh_data(self):
         """Refresh both Activity Log and Summary data"""
         try:
+            # If window is closing/closed, don't proceed
+            try:
+                if not self.root.winfo_exists():
+                    return
+            except Exception:
+                return
             # Check if we need to refresh activity log
             if os.path.exists(self.log_path):
                 with open(self.log_path, "r", encoding="utf-8") as f:
@@ -898,12 +967,15 @@ class LogViewer:
             self.update_recording_button()
             
             # Schedule next refresh
-            self.root.after(self.refresh_interval, self.refresh_data)
+            self._refresh_job = self.root.after(self.refresh_interval, self.refresh_data)
             
         except Exception as e:
             print(f"Error in refresh_data: {e}")
             # Still schedule next refresh even if there's an error
-            self.root.after(self.refresh_interval, self.refresh_data)
+            try:
+                self._refresh_job = self.root.after(self.refresh_interval, self.refresh_data)
+            except Exception:
+                pass
 
     def on_close(self):
         """Handle window close event - use same method as Close button"""
