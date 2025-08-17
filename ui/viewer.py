@@ -2,18 +2,47 @@
 Log viewer window
 """
 import os
+import importlib.util
+import configparser
 import csv
 import datetime
 import tkinter as tk
 from tkinter import ttk
-from core.utils import format_duration, ExeVersionInfo
-from .category_selector import CategorySelector
+# Robust imports to allow running this file directly or as a package module.
+# Prefer local core/utils.py even if a different 'core' package exists in site-packages.
+try:
+    from core.utils import format_duration, ExeVersionInfo  # type: ignore
+    # If the imported module is not ours, fallback to loading from local path
+    if not callable(globals().get('format_duration', None)):
+        raise ImportError('format_duration missing from imported core.utils')
+except Exception:
+    _here = os.path.dirname(os.path.abspath(__file__))
+    _root = os.path.abspath(os.path.join(_here, '..'))
+    utils_path = os.path.join(_root, 'core', 'utils.py')
+    spec = importlib.util.spec_from_file_location('activitylogger_core_utils', utils_path)
+    if spec and spec.loader:
+        _mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_mod)  # type: ignore[attr-defined]
+        format_duration = getattr(_mod, 'format_duration')
+        ExeVersionInfo = getattr(_mod, 'ExeVersionInfo')
+    else:
+        raise
+
+try:
+    from .category_selector import CategorySelector
+except Exception:
+    # Fallback when not in package context
+    from ui.category_selector import CategorySelector
 import matplotlib
 matplotlib.use('Agg')  # Use a non-interactive backend for safety
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pandas as pd
-from .splash import maybe_show_viewer_splash
+try:
+    from .splash import maybe_show_viewer_splash
+except Exception:
+    from ui.splash import maybe_show_viewer_splash
+from tkcalendar import DateEntry
 
 
 class LogViewer:
@@ -26,6 +55,11 @@ class LogViewer:
         self._refresh_job = None
         self._last_log_mtime = None
         self._last_log_data = None
+        self._refresh_paused = False
+        # Filtering state
+        self._filter_start_date = None  # datetime.date or None
+        self._filter_end_date = None    # datetime.date or None
+        self._filtered_rows = None      # list of CSV rows or None
 
         # Check if an instance for this log_path already exists
         if log_path in LogViewer._instances:
@@ -69,7 +103,8 @@ class LogViewer:
                 f"{version} {build_date} {build_time}"
             )
         )
-        self.root.geometry("1200x700")
+        # Make window 20% wider than previous 1200 => 1440
+        self.root.geometry("1440x700")
 
         # Schedule splash for viewer (once per day) after UI initializes
         def _show_splash_once():
@@ -85,6 +120,11 @@ class LogViewer:
         # Create notebook for tabs
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # Redraw graph when switching to graph tab (without forcing every time)
+        try:
+            self.notebook.bind('<<NotebookTabChanged>>', self._on_tab_changed)
+        except Exception:
+            pass
 
         # Make tab buttons 150% in height
         style = ttk.Style(self.root)
@@ -107,6 +147,11 @@ class LogViewer:
 
         # Create footer with statistics
         self.create_footer()
+        # Initialize filter dates (load from INI or set start to first CSV date)
+        try:
+            self._init_filter_dates()
+        except Exception:
+            pass
 
         self.last_line_count = 0
         self.refresh_interval = 250  # ms, for more responsive polling
@@ -186,14 +231,14 @@ class LogViewer:
         footer_frame = tk.Frame(self.root, relief=tk.SUNKEN, bd=1, height=50)
         footer_frame.pack(side=tk.BOTTOM, fill=tk.X)
         footer_frame.pack_propagate(False)  # Prevent frame from shrinking
-        
+
         # Left side - statistics labels
         stats_frame = tk.Frame(footer_frame)
         stats_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Create labels for statistics - make them more visible
         self.first_start_label = tk.Label(
-            stats_frame, text="Started: --", anchor='w', 
+            stats_frame, text="Started: --", anchor='w',
             font=('Arial', 9), fg='blue')
         self.first_start_label.pack(side=tk.LEFT, padx=(0, 15))
 
@@ -217,14 +262,34 @@ class LogViewer:
             font=('Arial', 9), fg='red')
         self.idle_time_label.pack(side=tk.LEFT, padx=(0, 15))
 
-        # Right side - control buttons
-        buttons_frame = tk.Frame(footer_frame)
-        buttons_frame.pack(side=tk.RIGHT, padx=10, pady=5)
+        # Right-aligned container for controls; pack items left-to-right in desired order
+        right_frame = tk.Frame(footer_frame)
+        right_frame.pack(side=tk.RIGHT, padx=8, pady=5)
 
-        # Recording status button
+        tk.Label(right_frame, text="Start:", font=('Arial', 9)).pack(side=tk.LEFT, padx=(0, 4))
+        self.date_start_entry = DateEntry(right_frame, width=10)
+        self.date_start_entry.pack(side=tk.LEFT, padx=(0, 8))
+        # Pause auto-refresh while working with the date pickers to avoid stealing focus
+        try:
+            self.date_start_entry.bind('<FocusIn>', lambda e: self.pause_refresh())
+            self.date_start_entry.bind('<<DateEntrySelected>>', self._on_date_selected)
+            self.date_start_entry.bind('<FocusOut>', lambda e: self.resume_refresh())
+        except Exception:
+            pass
+
+        tk.Label(right_frame, text="End:", font=('Arial', 9)).pack(side=tk.LEFT, padx=(0, 4))
+        self.date_end_entry = DateEntry(right_frame, width=10)
+        self.date_end_entry.pack(side=tk.LEFT, padx=(0, 8))
+        try:
+            self.date_end_entry.bind('<FocusIn>', lambda e: self.pause_refresh())
+            self.date_end_entry.bind('<<DateEntrySelected>>', self._on_date_selected)
+            self.date_end_entry.bind('<FocusOut>', lambda e: self.resume_refresh())
+        except Exception:
+            pass
+
         self.recording_btn = tk.Button(
-            buttons_frame, 
-            text="Logging", 
+            right_frame,
+            text="Logging",
             command=self.toggle_recording,
             width=12,
             height=1,
@@ -232,10 +297,9 @@ class LogViewer:
         )
         self.recording_btn.pack(side=tk.LEFT, padx=5)
 
-        # Go to folder button
         self.folder_btn = tk.Button(
-            buttons_frame, 
-            text="Go To Folder", 
+            right_frame,
+            text="Go To Folder",
             command=self.open_folder,
             width=12,
             height=1,
@@ -243,10 +307,9 @@ class LogViewer:
         )
         self.folder_btn.pack(side=tk.LEFT, padx=5)
 
-        # Close button
         self.close_btn = tk.Button(
-            buttons_frame, 
-            text="Close", 
+            right_frame,
+            text="Close",
             command=self.close_window,
             width=12,
             height=1,
@@ -305,6 +368,61 @@ class LogViewer:
             self.root, event, key, current_category, sorted_categories, 
             self.change_category
         )
+
+    def pause_refresh(self):
+        try:
+            self._refresh_paused = True
+        except Exception:
+            pass
+
+    def resume_refresh(self):
+        try:
+            self._refresh_paused = False
+        except Exception:
+            pass
+
+    def _dates_tuple(self):
+        try:
+            sd = self.date_start_entry.get_date() if hasattr(self, 'date_start_entry') else None
+        except Exception:
+            sd = None
+        try:
+            ed = self.date_end_entry.get_date() if hasattr(self, 'date_end_entry') else None
+        except Exception:
+            ed = None
+        return sd, ed
+
+    def _on_date_clicked(self, _event=None):
+        try:
+            # Apply immediately on click (no-op if unchanged)
+            self.apply_filter()
+        finally:
+            # keep paused while user is interacting
+            pass
+
+    def _on_date_selected(self, _event=None):
+        try:
+            self.apply_filter()
+        finally:
+            self.resume_refresh()
+
+    def _on_date_focus_out(self, _event=None):
+        try:
+            self.apply_filter()
+        finally:
+            self.resume_refresh()
+
+    def _on_tab_changed(self, event):
+        try:
+            widget = event.widget
+            if widget is self.notebook:
+                idx = self.notebook.index('current')
+                tab = self.notebook.tabs()[idx]
+                # If the graph tab is selected, attempt a redraw (non-forced)
+                if self.notebook.nametowidget(tab) is self.graph_frame:
+                    self.setup_graph_tab()
+        except Exception:
+            pass
 
     def change_category(self, key, new_category):
         """Change the category for a specific key in ActivitySummary.csv and historical data"""
@@ -399,7 +517,7 @@ class LogViewer:
         except Exception as e:
             print(f"Error refreshing views after category change: {e}")
 
-    def setup_graph_tab(self):
+    def setup_graph_tab(self, force: bool = False):
         """Setup the stacked bar graph tab using the correct log CSV via get_log_path(), skipping 'Inactive' and reducing flicker.
         Only refresh/redraw if window size changed.
         Y axis is in hours. Legend sorted by total duration, with hours shown. Only top 20 processes in legend.
@@ -410,40 +528,72 @@ class LogViewer:
                 return
         except Exception:
             return
-        # Store previous size to avoid unnecessary redraws
+        # Store previous size to avoid unnecessary redraws, unless forced
         if not hasattr(self, "_graph_prev_size"):
             self._graph_prev_size = (self.graph_frame.winfo_width(), self.graph_frame.winfo_height())
 
         current_size = (self.graph_frame.winfo_width(), self.graph_frame.winfo_height())
-        if hasattr(self, "_graph_canvas") and self._graph_prev_size == current_size:
-            # No size change, skip redraw to reduce flicker
+        if not force and hasattr(self, "_graph_canvas") and self._graph_prev_size == current_size:
+            # No size change and not forced, skip redraw to reduce flicker
             return
         self._graph_prev_size = current_size
 
-        # Clear frame
-        for widget in self.graph_frame.winfo_children():
-            widget.destroy()
-
-        log_csv_path = self.get_log_path() if hasattr(self, "get_log_path") else self.log_path
-
-        if not os.path.exists(log_csv_path):
-            label = tk.Label(self.graph_frame, text=f"{os.path.basename(log_csv_path)} not found", font=('Arial', 12))
-            label.pack(padx=10, pady=10)
-            return
+    # We'll decide to clear only if we actually redraw below
 
         try:
-            with open(log_csv_path, "r", encoding="utf-8") as f:
-                reader = list(csv.reader(f))
-                if not reader or len(reader) < 2:
-                    label = tk.Label(self.graph_frame, text=f"No data in {os.path.basename(log_csv_path)}", font=('Arial', 12))
+            # Determine rows source: filtered view or CSV file
+            rows = None
+            headers = [
+                "StartTime", "EndTime", "DurationSeconds", "WindowTitle",
+                "WindowDetails", "ProcessName", "Category", "ComputerName"
+            ]
+            if self._filtered_rows is not None:
+                rows = self._filtered_rows[:]
+            else:
+                log_csv_path = self.get_log_path() if hasattr(self, "get_log_path") else self.log_path
+                if not os.path.exists(log_csv_path):
+                    label = tk.Label(self.graph_frame, text=f"{os.path.basename(log_csv_path)} not found", font=('Arial', 12))
                     label.pack(padx=10, pady=10)
                     return
-                headers = reader[0]
-                rows = reader[1:]
+                with open(log_csv_path, "r", encoding="utf-8") as f:
+                    reader = list(csv.reader(f))
+                    if not reader or len(reader) < 2:
+                        label = tk.Label(self.graph_frame, text=f"No data in {os.path.basename(log_csv_path)}", font=('Arial', 12))
+                        label.pack(padx=10, pady=10)
+                        return
+                    headers = reader[0]
+                    rows = reader[1:]
+
+            # Build a lightweight data signature to avoid unnecessary redraws
+            try:
+                if headers and isinstance(headers, list) and 'DurationSeconds' in headers:
+                    dur_idx = headers.index('DurationSeconds')
+                else:
+                    dur_idx = 2
+                total_dur = 0
+                for r in rows:
+                    if len(r) > dur_idx:
+                        try:
+                            total_dur += int(r[dur_idx])
+                        except Exception:
+                            pass
+                start_iso = self._filter_start_date.isoformat() if getattr(self, '_filter_start_date', None) else ''
+                end_iso = self._filter_end_date.isoformat() if getattr(self, '_filter_end_date', None) else ''
+                data_sig = (start_iso, end_iso, len(rows), total_dur)
+            except Exception:
+                data_sig = None
+
+            # Skip redraw if nothing changed and not forced
+            if not force and hasattr(self, '_graph_last_sig') and self._graph_last_sig == data_sig:
+                return
+
+            # Clear frame prior to redraw
+            for widget in self.graph_frame.winfo_children():
+                widget.destroy()
 
             required_cols = ["Category", "ProcessName", "DurationSeconds"]
             if not all(col in headers for col in required_cols):
-                label = tk.Label(self.graph_frame, text=f"Required columns not found in {os.path.basename(log_csv_path)}", font=('Arial', 12))
+                label = tk.Label(self.graph_frame, text=f"Required columns not found", font=('Arial', 12))
                 label.pack(padx=10, pady=10)
                 return
 
@@ -467,19 +617,19 @@ class LogViewer:
             # Convert seconds to hours for Y axis
             pivot = pivot / 3600.0
 
-            # Sort legend labels by total duration and append hours, only top 20
+            # Sort legend labels by total duration and append with unit, only top 20
             process_totals = pivot.sum(axis=0)
             sorted_processs = process_totals.sort_values(ascending=False)
             top_processes = sorted_processs.head(20)
             legend_labels = [
-                f"{proc} ({hours:.2f}h)" for proc, hours in top_processes.items()
+                f"{proc} ({val:.2f}h)" for proc, val in top_processes.items()
             ]
             # Reorder columns in pivot to match top_processes, drop others
             pivot = pivot[top_processes.index]
 
             fig, ax = plt.subplots(figsize=(8, 5), dpi=100)
             bars = pivot.plot(kind="bar", stacked=True, ax=ax)
-            ax.set_ylabel("Total Time (hours)")
+            ax.set_ylabel("Total Time (Hours)")
             ax.set_xlabel("Category")
             ax.set_title("Activity by Category (Stacked by Process)")
             ax.legend(legend_labels, title="Process", bbox_to_anchor=(1.05, 1), loc="upper left")
@@ -490,9 +640,179 @@ class LogViewer:
             canvas.draw()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=1)
             self._graph_canvas = canvas
+            # Cache signature
+            try:
+                self._graph_last_sig = data_sig
+            except Exception:
+                pass
         except Exception as e:
             label = tk.Label(self.graph_frame, text=f"Error loading graph: {e}", font=('Arial', 12))
             label.pack(padx=10, pady=10)
+
+    def apply_filter(self):
+        """Filter data by selected date range and refresh all views."""
+        try:
+            # Read dates from widgets
+            start_date = self.date_start_entry.get_date() if hasattr(self, 'date_start_entry') else None
+            end_date = self.date_end_entry.get_date() if hasattr(self, 'date_end_entry') else None
+
+            # Skip if unchanged
+            if (self._filter_start_date == start_date and self._filter_end_date == end_date):
+                return
+
+            self._filter_start_date = start_date
+            self._filter_end_date = end_date
+
+            # Load all rows from CSV
+            if not os.path.exists(self.log_path):
+                self._filtered_rows = []
+            else:
+                with open(self.log_path, 'r', encoding='utf-8') as f:
+                    reader = list(csv.reader(f))
+                    headers = reader[0] if reader else []
+                    rows = reader[1:] if len(reader) > 1 else []
+
+                # Filter by StartTime date
+                filtered = []
+                for row in rows:
+                    if not row:
+                        continue
+                    try:
+                        start_dt = datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
+                        d = start_dt.date()
+                        if start_date and d < start_date:
+                            continue
+                        if end_date and d > end_date:
+                            continue
+                        filtered.append(row)
+                    except Exception:
+                        continue
+                self._filtered_rows = filtered
+
+            # Refresh all views with filtered data
+            self.load_log()
+            self.load_summary()
+            self.setup_graph_tab(force=True)
+
+            # Persist selections to INI
+            try:
+                self._save_filter_dates_to_ini(self._filter_start_date, self._filter_end_date)
+            except Exception:
+                pass
+        except Exception as e:
+            print(f"Error applying filter: {e}")
+
+    # --- Filter persistence helpers ---
+    def _get_ini_path(self) -> str:
+        try:
+            user_home = os.path.expanduser('~')
+            base_dir = os.path.join(
+                os.environ.get('LOCALAPPDATA', user_home), 'ActivityLogger'
+            )
+            os.makedirs(base_dir, exist_ok=True)
+            return os.path.join(base_dir, 'ActivityLogger.ini')
+        except Exception:
+            return os.path.join(os.path.expanduser('~'), 'ActivityLogger.ini')
+
+    def _load_filter_dates_from_ini(self):
+        ini_path = self._get_ini_path()
+        cfg = configparser.ConfigParser()
+        try:
+            if os.path.exists(ini_path):
+                cfg.read(ini_path, encoding='utf-8')
+        except Exception:
+            return None, None
+        if 'viewer_filter' not in cfg:
+            return None, None
+        sec = cfg['viewer_filter']
+        sd = sec.get('start_date', '').strip()
+        ed = sec.get('end_date', '').strip()
+        s = e = None
+        try:
+            if sd:
+                s = datetime.date.fromisoformat(sd)
+        except Exception:
+            s = None
+        try:
+            if ed:
+                e = datetime.date.fromisoformat(ed)
+        except Exception:
+            e = None
+        return s, e
+
+    def _save_filter_dates_to_ini(self, start_date, end_date):
+        ini_path = self._get_ini_path()
+        cfg = configparser.ConfigParser()
+        try:
+            if os.path.exists(ini_path):
+                cfg.read(ini_path, encoding='utf-8')
+        except Exception:
+            cfg = configparser.ConfigParser()
+        if 'viewer_filter' not in cfg:
+            cfg['viewer_filter'] = {}
+        sec = cfg['viewer_filter']
+        sec['start_date'] = start_date.isoformat() if start_date else ''
+        sec['end_date'] = end_date.isoformat() if end_date else ''
+        try:
+            with open(ini_path, 'w', encoding='utf-8') as f:
+                cfg.write(f)
+        except Exception:
+            pass
+
+    def _get_first_csv_date(self):
+        try:
+            if not os.path.exists(self.log_path):
+                return None
+            with open(self.log_path, 'r', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                headers = next(reader, None)
+                if not headers:
+                    return None
+                # Expect StartTime in column 0
+                first = None
+                for row in reader:
+                    if not row:
+                        continue
+                    try:
+                        dt = datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S").date()
+                    except Exception:
+                        continue
+                    if first is None or dt < first:
+                        first = dt
+                return first
+        except Exception:
+            return None
+
+    def _init_filter_dates(self):
+        # Load saved dates; if missing, set start to first date in CSV
+        if not hasattr(self, 'date_start_entry') or not hasattr(self, 'date_end_entry'):
+            return
+        saved_start, saved_end = self._load_filter_dates_from_ini()
+        if saved_start:
+            try:
+                self.date_start_entry.set_date(saved_start)
+            except Exception:
+                pass
+        else:
+            first_dt = self._get_first_csv_date()
+            if first_dt:
+                try:
+                    self.date_start_entry.set_date(first_dt)
+                except Exception:
+                    pass
+        if saved_end:
+            try:
+                self.date_end_entry.set_date(saved_end)
+            except Exception:
+                pass
+        # If any saved setting exists, apply it on startup
+        if saved_start or saved_end:
+            try:
+                self.apply_filter()
+            except Exception:
+                pass
+
+    # Removed unit selection feature per request
 
     def on_activity_heading_click(self, col):
         """Handle clicking on activity log column headers for sorting"""
@@ -572,6 +892,75 @@ class LogViewer:
                     self.summary_info_label.config(text=text)
             except Exception:
                 pass
+
+        # If a date filter is active, compute summary from filtered rows directly
+        if self._filtered_rows is not None:
+            try:
+                # Prepare columns
+                headers = ['Key', 'Category', 'Count', 'Duration']
+                if self.summary_tree.winfo_exists():
+                    self.summary_tree["columns"] = headers
+                    for col in headers:
+                        self.summary_tree.heading(col, text=col)
+                        if col == 'Key':
+                            self.summary_tree.column(col, width=120, anchor='w')
+                        elif col == 'Category':
+                            self.summary_tree.column(col, width=150, anchor='w')
+                        elif col == 'Count':
+                            self.summary_tree.column(col, width=80, anchor='center')
+                        elif col == 'Duration':
+                            self.summary_tree.column(col, width=120, anchor='center')
+
+                # Aggregate by (ProcessName, Category)
+                agg = {}
+                for row in self._filtered_rows:
+                    if not row or len(row) < 7:
+                        continue
+                    proc = row[5]
+                    category = row[6]
+                    try:
+                        dur = int(row[2])
+                    except Exception:
+                        dur = 0
+                    key = (proc, category)
+                    if key not in agg:
+                        agg[key] = {'count': 0, 'duration': 0}
+                    agg[key]['count'] += 1
+                    agg[key]['duration'] += dur
+
+                # Build rows and sort by duration desc
+                table_rows = []
+                for (proc, category), vals in agg.items():
+                    table_rows.append([
+                        proc,
+                        category,
+                        str(vals['count']),
+                        format_duration(vals['duration'])
+                    ])
+                table_rows.sort(key=lambda r: r[3], reverse=True)
+
+                # Clear and insert
+                try:
+                    if self.summary_tree.winfo_exists():
+                        self.summary_tree.delete(*self.summary_tree.get_children())
+                        for row in table_rows:
+                            self.summary_tree.insert("", "end", values=row)
+                except Exception:
+                    pass
+
+                range_text = "Filtered Summary"
+                if self._filter_start_date or self._filter_end_date:
+                    parts = []
+                    if self._filter_start_date:
+                        parts.append(f"from {self._filter_start_date}")
+                    if self._filter_end_date:
+                        parts.append(f"to {self._filter_end_date}")
+                    if parts:
+                        range_text += " (" + " ".join(parts) + ")"
+                safe_label(range_text)
+                return
+            except Exception as e:
+                print(f"Error building filtered summary: {e}")
 
         if not os.path.exists(self.summary_path):
             # Clear the summary tree if file doesn't exist
@@ -724,10 +1113,10 @@ class LogViewer:
                 # Use a tuple of the first two columns as a unique key (adjust as needed)
                 selected_key = tuple(selected_values[:2]) if selected_values else None
 
-            # Check file modification time
+            # Check file modification time and load rows
             mtime = os.path.getmtime(self.log_path)
             if hasattr(self, "_last_log_mtime") and self._last_log_mtime == mtime and self._last_log_data is not None:
-                headers, rows = self._last_log_data
+                headers, all_rows = self._last_log_data
             else:
                 with open(self.log_path, "r", encoding="utf-8") as f:
                     reader = list(csv.reader(f))
@@ -737,13 +1126,19 @@ class LogViewer:
                         self._last_log_data = ([], [])
                         return
                     headers = reader[0]
-                    rows = reader[1:]
-                
+                    all_rows = reader[1:]
+
                 # Backfill any missing computer names
-                rows = self.backfill_computer_names_in_viewer(headers, rows)
-                
+                all_rows = self.backfill_computer_names_in_viewer(headers, all_rows)
+
                 self._last_log_mtime = mtime
-                self._last_log_data = (headers, rows)
+                self._last_log_data = (headers, all_rows)
+
+            # Apply date filter if active for activity tab display
+            if self._filtered_rows is not None:
+                rows = self._filtered_rows[:]
+            else:
+                rows = all_rows
 
             # Reverse the rows so newest is on top
             rows = rows[::-1]
@@ -799,19 +1194,16 @@ class LogViewer:
 
             # --- Restore selection and focus ---
             if self._is_initial_load and first_item_id:
-                # On initial load, select and focus the top item (most recent entry)
+                # On initial load, select the top item (most recent entry)
                 self.tree.selection_set(first_item_id)
-                self.tree.focus(first_item_id)
                 self.tree.see(first_item_id)
                 self._is_initial_load = False  # Unset flag for subsequent refreshes
             elif item_id_to_select:
-                # On refresh, restore the previously selected item
+                # On refresh, restore the previously selected item without stealing focus
                 self.tree.selection_set(item_id_to_select)
-                self.tree.focus(item_id_to_select)
                 self.tree.see(item_id_to_select)
 
-            # Always call after_idle to ensure focus is set after all UI updates
-            self.tree.after_idle(lambda: self.tree.focus_set())
+            # Do not steal focus; leave focus on the active widget
 
         except Exception as e:
             print(f"Error loading log: {e}")
@@ -944,6 +1336,10 @@ class LogViewer:
     def refresh_data(self):
         """Refresh both Activity Log and Summary data"""
         try:
+            # Skip refresh while user is interacting with date pickers/buttons
+            if getattr(self, '_refresh_paused', False):
+                self._refresh_job = self.root.after(self.refresh_interval, self.refresh_data)
+                return
             # If window is closing/closed, don't proceed
             try:
                 if not self.root.winfo_exists():
@@ -952,15 +1348,19 @@ class LogViewer:
                 return
             # Check if we need to refresh activity log
             if os.path.exists(self.log_path):
-                with open(self.log_path, "r", encoding="utf-8") as f:
-                    reader = list(csv.reader(f))
-                    rows = reader[1:] if len(reader) > 1 else []
-                    if len(rows) != self.last_line_count:
-                        self.load_log()
+                if self._filtered_rows is not None:
+                    # When filtered, just reload to keep views in sync
+                    self.load_log()
+                else:
+                    with open(self.log_path, "r", encoding="utf-8") as f:
+                        reader = list(csv.reader(f))
+                        rows = reader[1:] if len(reader) > 1 else []
+                        if len(rows) != self.last_line_count:
+                            self.load_log()
 
             # Refresh summary
             self.load_summary()
-            # Refresh graph
+            # Refresh graph (non-forced, signature avoids redraw when unchanged)
             self.setup_graph_tab()
 
             # Update recording button status
