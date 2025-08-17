@@ -28,46 +28,41 @@ class HelpViewer:
         # Help text
         resolved_log_path = log_path or ""
         show_log_location = bool(resolved_log_path)
+        log_location_block = ""
+        if show_log_location:
+            log_location_block = (
+                "LOG LOCATION:\n" + resolved_log_path + "\n\n"
+            )
 
-        help_text = f"""
-Activity Logger - Help
-
-MENU ITEMS:
-
-Open Log File: Opens the activity log viewer window
-Start Logging: Begins monitoring active windows and applications
-Stop Logging: Pauses activity monitoring (keeps existing data)
-Restart Logging: Stops and restarts the logging process
-Help: Shows this help window
-Exit: Closes the application completely
-
-FEATURES:
-
-• Automatic window tracking - logs when you switch between applications
-• Idle detection - detects when you're away from computer
-• Category assignment - automatically categorizes applications
-• Real-time viewing - see your activity as it's logged
-• Statistics - shows session duration, total logged time, and idle time
-
-{('LOG LOCATION:\n' + resolved_log_path + '\n') if show_log_location else ''}
-
-USAGE TIPS:
-
-• The application runs in the system tray (bottom-right corner)
-• Right-click the tray icon to access menu options
-• The log file is a CSV that can be opened in Excel or other tools
-• Categories can be customized by right-clicking in the Summary tab
-• Idle detection varies by application type (longer for meetings)
-
-TROUBLESHOOTING:
-
-• If logging stops working, try "Restart Logging"
-• Log files are saved automatically and safely
-• Multiple log viewer windows are prevented automatically
-• The application starts logging automatically when launched
-
-For more information or support, check the source code comments.
-        """
+        help_text = (
+            "Activity Logger - Help\n\n"
+            "MENU ITEMS:\n\n"
+            "Open Log File: Opens the activity log viewer window\n"
+            "Start Logging: Begins monitoring active windows and applications\n"
+            "Stop Logging: Pauses activity monitoring (keeps existing data)\n"
+            "Restart Logging: Stops and restarts the logging process\n"
+            "Help: Shows this help window\n"
+            "Exit: Closes the application completely\n\n"
+            "FEATURES:\n\n"
+            "• Automatic window tracking - logs when you switch between applications\n"
+            "• Idle detection - detects when you're away from computer\n"
+            "• Category assignment - automatically categorizes applications\n"
+            "• Real-time viewing - see your activity as it's logged\n"
+            "• Statistics - shows session duration, total logged time, and idle time\n\n"
+        ) + log_location_block + (
+            "USAGE TIPS:\n\n"
+            "• The application runs in the system tray (bottom-right corner)\n"
+            "• Right-click the tray icon to access menu options\n"
+            "• The log file is a CSV that can be opened in Excel or other tools\n"
+            "• Categories can be customized by right-clicking in the Summary tab\n"
+            "• Idle detection varies by application type (longer for meetings)\n\n"
+            "TROUBLESHOOTING:\n\n"
+            "• If logging stops working, try \"Restart Logging\"\n"
+            "• Log files are saved automatically and safely\n"
+            "• Multiple log viewer windows are prevented automatically\n"
+            "• The application starts logging automatically when launched\n\n"
+            "For more information or support, check the source code comments.\n"
+        )
         
         # Create scrolled text widget
         text_widget = scrolledtext.ScrolledText(

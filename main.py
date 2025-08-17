@@ -1,5 +1,6 @@
 """
 Activity Logger - Main entry point
+Rene Coffeng (c) 2025
 """
 import sys
 import os
