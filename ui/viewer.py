@@ -182,6 +182,11 @@ class LogViewer:
 
         self.tree = ttk.Treeview(main_frame, show="headings")
         self.tree.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+        try:
+            # Bind left-click on headings to robust handler that uses identify_column
+            self.tree.bind('<Button-1>', self._on_tree_header_click, add='+')
+        except Exception:
+            pass
 
         # Vertical scrollbar for activity tree
         self.scroll_y = ttk.Scrollbar(
@@ -213,14 +218,23 @@ class LogViewer:
         self.summary_tree = ttk.Treeview(summary_main_frame, show="headings")
         self.summary_tree.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
-        # Bind right-click event to summary tree
-        self.summary_tree.bind("<Button-3>", self.on_summary_right_click)
+        # Bind right-click event to summary tree for category change popup
+        try:
+            self.summary_tree.bind('<Button-3>', self.on_summary_right_click)
+        except Exception:
+            pass
+        try:
+            self.summary_tree.bind('<Button-1>', self._on_summary_header_click, add='+')
+        except Exception:
+            pass
 
+        # Vertical scrollbar for summary tree
         self.summary_scroll_y = ttk.Scrollbar(
             summary_main_frame, orient="vertical", command=self.summary_tree.yview)
         self.summary_scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
         self.summary_tree.configure(yscrollcommand=self.summary_scroll_y.set)
 
+        # Horizontal scrollbar for summary tree
         self.summary_scroll_x = ttk.Scrollbar(
             self.summary_frame, orient="horizontal", command=self.summary_tree.xview)
         self.summary_scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
@@ -823,57 +837,236 @@ class LogViewer:
             else:
                 self.sort_column = col
                 self.sort_reverse = False
-            
-            # Get all data
-            children = list(self.tree.get_children())
-            if not children:
+            # Apply the sort using the helper so it can be reapplied after refresh
+            self._apply_activity_sort()
+        except Exception as e:
+            print(f"Error sorting column {col}: {e}")
+
+    def _apply_activity_sort(self):
+        """Apply the currently-selected sort (self.sort_column/self.sort_reverse)
+        to the activity tree without toggling the state.
+        """
+        try:
+            col = getattr(self, 'sort_column', None)
+            if not col:
                 return
-            
-            # Get column index
+            if not hasattr(self, 'tree'):
+                return
             columns = self.tree["columns"]
             if col not in columns:
                 return
-            col_index = columns.index(col)
-            
-            # Create list of (values, item_id) for sorting
+            col_index = list(columns).index(col)
+
+            children = list(self.tree.get_children())
+            if not children:
+                return
+
+            def _parse_value_for_activity(column_name, value):
+                if value is None:
+                    return ''
+                if column_name in ['DurationSeconds', 'Count']:
+                    try:
+                        return int(value)
+                    except Exception:
+                        return 0
+                if column_name in ['StartTime', 'EndTime', 'StopTime']:
+                    try:
+                        return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+                    except Exception:
+                        return datetime.datetime.min
+                # default: case-insensitive string
+                try:
+                    return str(value).lower()
+                except Exception:
+                    return str(value)
+
             data = []
             for child in children:
                 values = self.tree.item(child, 'values')
                 if len(values) > col_index:
-                    sort_value = values[col_index]
-                    
-                    # Try to convert to appropriate type for sorting
-                    if col in ['DurationSeconds', 'Count']:
-                        try:
-                            sort_value = int(sort_value)
-                        except:
-                            pass
-                    elif col in ['StartTime', 'StopTime']:
-                        try:
-                            sort_value = datetime.datetime.strptime(sort_value, '%Y-%m-%d %H:%M:%S')
-                        except:
-                            pass
-                    
-                    data.append((sort_value, child, values))
-            
-            # Sort the data
-            data.sort(key=lambda x: x[0], reverse=self.sort_reverse)
-            
-            # Clear and repopulate tree
+                    sort_value = _parse_value_for_activity(col, values[col_index])
+                    data.append((sort_value, values))
+
+            data.sort(key=lambda x: x[0], reverse=getattr(self, 'sort_reverse', False))
+
+            # Repopulate tree
             self.tree.delete(*children)
-            for sort_value, child_id, values in data:
-                self.tree.insert("", "end", values=values)
-            
-            # Update column header to show sort direction
+            for sort_value, values in data:
+                self.tree.insert('', 'end', values=values)
+
+            # Update headings indicator
             for column in columns:
                 if column == col:
-                    direction = " ↓" if self.sort_reverse else " ↑"
+                    direction = ' ↓' if getattr(self, 'sort_reverse', False) else ' ↑'
                     self.tree.heading(column, text=column + direction)
                 else:
                     self.tree.heading(column, text=column)
-                    
+        except Exception:
+            pass
+
+    def _on_tree_header_click(self, event):
+        """Handle mouse clicks on the activity tree heading area robustly by
+        identifying the exact column under the pointer (works correctly when
+        the window is resized).
+        """
+        try:
+            region = self.tree.identify_region(event.x, event.y)
+            if region != 'heading':
+                return
+            col_id = self.tree.identify_column(event.x)  # returns '#1', '#2', ...
+            if not col_id:
+                return
+            idx = int(col_id.replace('#', '')) - 1
+            columns = list(self.tree['columns'])
+            if idx < 0 or idx >= len(columns):
+                return
+            col = columns[idx]
+            self.on_activity_heading_click(col)
+        except Exception:
+            pass
+
+    def _on_summary_header_click(self, event):
+        """Same as _on_tree_header_click but for the summary tree."""
+        try:
+            region = self.summary_tree.identify_region(event.x, event.y)
+            if region != 'heading':
+                return
+            col_id = self.summary_tree.identify_column(event.x)
+            if not col_id:
+                return
+            idx = int(col_id.replace('#', '')) - 1
+            columns = list(self.summary_tree['columns'])
+            if idx < 0 or idx >= len(columns):
+                return
+            col = columns[idx]
+            self.on_summary_heading_click(col)
+        except Exception:
+            pass
+
+    def _apply_summary_sort(self):
+        """Apply current summary sort (self.summary_sort_column/self.summary_sort_reverse)
+        without toggling the sort direction.
+        """
+        try:
+            col = getattr(self, 'summary_sort_column', None)
+            if not col or not hasattr(self, 'summary_tree'):
+                return
+            columns = list(self.summary_tree['columns'])
+            if col not in columns:
+                return
+            col_index = columns.index(col)
+
+            children = list(self.summary_tree.get_children())
+            if not children:
+                return
+
+            data = []
+            for child in children:
+                values = self.summary_tree.item(child, 'values')
+                if len(values) > col_index:
+                    sort_value = values[col_index]
+                    # Duration needs parsing
+                    if col.lower().startswith('duration'):
+                        sort_value = self._parse_duration_display(sort_value)
+                    else:
+                        try:
+                            sort_value = int(sort_value)
+                        except Exception:
+                            try:
+                                sort_value = str(sort_value).lower()
+                            except Exception:
+                                sort_value = sort_value
+                    data.append((sort_value, values))
+
+            data.sort(key=lambda x: x[0], reverse=getattr(self, 'summary_sort_reverse', False))
+
+            self.summary_tree.delete(*children)
+            for sort_value, values in data:
+                self.summary_tree.insert('', 'end', values=values)
+
+            for column in columns:
+                if column == col:
+                    direction = ' ↓' if getattr(self, 'summary_sort_reverse', False) else ' ↑'
+                    self.summary_tree.heading(column, text=column + direction)
+                else:
+                    self.summary_tree.heading(column, text=column)
+        except Exception:
+            pass
+
+    def _parse_duration_display(self, disp: str):
+        """Parse a formatted duration like 'dd hh:mm:ss' into total seconds for sorting.
+        Returns integer seconds or 0 on error.
+        """
+        try:
+            if not disp:
+                return 0
+            # Expect format 'DD HH:MM:SS'
+            parts = disp.strip().split()
+            if len(parts) == 2:
+                days = int(parts[0])
+                hms = parts[1]
+            elif len(parts) == 1:
+                days = 0
+                hms = parts[0]
+            else:
+                return 0
+            hh, mm, ss = [int(x) for x in hms.split(':')]
+            return days * 86400 + hh * 3600 + mm * 60 + ss
+        except Exception:
+            return 0
+
+    def on_summary_heading_click(self, col):
+        """Handle clicking on summary tab column headers for sorting."""
+        try:
+            # Toggle sort direction if same column, otherwise start with ascending
+            if self.summary_sort_column == col:
+                self.summary_sort_reverse = not self.summary_sort_reverse
+            else:
+                self.summary_sort_column = col
+                self.summary_sort_reverse = False
+
+            children = list(self.summary_tree.get_children())
+            if not children:
+                return
+
+            columns = self.summary_tree["columns"]
+            if col not in columns:
+                return
+            col_index = columns.index(col)
+
+            data = []
+            for child in children:
+                values = self.summary_tree.item(child, 'values')
+                if len(values) > col_index:
+                    sort_value = values[col_index]
+                    # Special handling for Duration column (formatted string)
+                    if col.lower().startswith('duration'):
+                        sort_value = self._parse_duration_display(sort_value)
+                    else:
+                        # Try numeric
+                        try:
+                            sort_value = int(sort_value)
+                        except Exception:
+                            pass
+                    data.append((sort_value, child, values))
+
+            data.sort(key=lambda x: x[0], reverse=self.summary_sort_reverse)
+
+            # Repopulate
+            self.summary_tree.delete(*children)
+            for sort_value, child_id, values in data:
+                self.summary_tree.insert('', 'end', values=values)
+
+            # Update headings to show direction indicator
+            for column in columns:
+                if column == col:
+                    direction = ' ↓' if self.summary_sort_reverse else ' ↑'
+                    self.summary_tree.heading(column, text=column + direction)
+                else:
+                    self.summary_tree.heading(column, text=column)
+
         except Exception as e:
-            print(f"Error sorting column {col}: {e}")
+            print(f"Error sorting summary column {col}: {e}")
 
     def load_summary(self):
         """Load ActivitySummary.csv data into the summary tab"""
@@ -910,6 +1103,12 @@ class LogViewer:
                             self.summary_tree.column(col, width=80, anchor='center')
                         elif col == 'Duration':
                             self.summary_tree.column(col, width=120, anchor='center')
+
+                    # Rebind column headers to sort handler
+                    for col in headers:
+                        # Heading text set above; header clicks handled via identify-based
+                        # mouse binding to avoid incorrect column targeting on resize.
+                        self.summary_tree.heading(col, text=col)
 
                 # Aggregate by (ProcessName, Category)
                 agg = {}
@@ -958,6 +1157,13 @@ class LogViewer:
                     if parts:
                         range_text += " (" + " ".join(parts) + ")"
                 safe_label(range_text)
+                # Reapply any existing summary sort before returning so the
+                # user's sort choice persists when viewing filtered summary.
+                try:
+                    if getattr(self, 'summary_sort_column', None):
+                        self._apply_summary_sort()
+                except Exception:
+                    pass
                 return
             except Exception as e:
                 print(f"Error building filtered summary: {e}")
@@ -1017,6 +1223,9 @@ class LogViewer:
                         self.summary_tree["columns"] = headers
                         for col in headers:
                             self.summary_tree.heading(col, text=col)
+                        # Bind header clicks to sorting handler
+                        for col in headers:
+                            self.summary_tree.heading(col, command=lambda c=col: self.on_summary_heading_click(c))
                             # Set column widths based on content
                             if col == "Key":
                                 self.summary_tree.column(col, width=120, anchor="w")
@@ -1052,6 +1261,13 @@ class LogViewer:
         except Exception as e:
             print(f"Error loading ActivitySummary.csv: {e}")
             safe_label(f"Error loading ActivitySummary.csv: {e}")
+
+        # Ensure user's summary sort is reapplied after load
+        try:
+            if getattr(self, 'summary_sort_column', None):
+                self._apply_summary_sort()
+        except Exception:
+            pass
 
     def get_computer_name_from_filename(self):
         """Extract computer name from log filename"""
@@ -1151,8 +1367,7 @@ class LogViewer:
             # Set up columns (without WindowDetails)
             self.tree["columns"] = display_headers
             for col in display_headers:
-                self.tree.heading(col, text=col, 
-                                command=lambda c=col: self.on_activity_heading_click(c))
+                self.tree.heading(col, text=col)
                 # Set column widths based on content
                 if col == "StartTime" or col == "EndTime":
                     self.tree.column(col, width=130, anchor="w")
@@ -1168,6 +1383,8 @@ class LogViewer:
                     self.tree.column(col, width=100, anchor="w")
                 else:
                     self.tree.column(col, width=150, anchor="w")
+            # Header clicks are handled by the identify-based mouse binding
+            # to ensure the correct column is detected regardless of widths.
 
             # Remove all old rows
             self.tree.delete(*self.tree.get_children())
@@ -1207,6 +1424,11 @@ class LogViewer:
 
         except Exception as e:
             print(f"Error loading log: {e}")
+        # Ensure user's activity sort is reapplied after load
+        try:
+            self._apply_activity_sort()
+        except Exception:
+            pass
 
     def update_statistics(self, rows):
         """Update footer statistics based on log data since application start"""
