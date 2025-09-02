@@ -663,15 +663,15 @@ class LogViewer:
             label = tk.Label(self.graph_frame, text=f"Error loading graph: {e}", font=('Arial', 12))
             label.pack(padx=10, pady=10)
 
-    def apply_filter(self):
+    def apply_filter(self, force: bool = False):
         """Filter data by selected date range and refresh all views."""
         try:
             # Read dates from widgets
             start_date = self.date_start_entry.get_date() if hasattr(self, 'date_start_entry') else None
             end_date = self.date_end_entry.get_date() if hasattr(self, 'date_end_entry') else None
 
-            # Skip if unchanged
-            if (self._filter_start_date == start_date and self._filter_end_date == end_date):
+            # Skip if unchanged unless forced
+            if not force and (self._filter_start_date == start_date and self._filter_end_date == end_date):
                 return
 
             self._filter_start_date = start_date
@@ -1570,9 +1570,20 @@ class LogViewer:
                 return
             # Check if we need to refresh activity log
             if os.path.exists(self.log_path):
+                # If filtered, check file mtime and reapply filter when file changes
                 if self._filtered_rows is not None:
-                    # When filtered, just reload to keep views in sync
-                    self.load_log()
+                    try:
+                        mtime = os.path.getmtime(self.log_path)
+                        if getattr(self, '_last_log_mtime', None) != mtime:
+                            # Re-read and re-filter the data to pick up new entries
+                            self.apply_filter(force=True)
+                            self._last_log_mtime = mtime
+                        else:
+                            # No mtime change, still refresh summary to be safe
+                            self.load_summary()
+                    except Exception:
+                        # Fallback to full load on error
+                        self.load_log()
                 else:
                     with open(self.log_path, "r", encoding="utf-8") as f:
                         reader = list(csv.reader(f))
