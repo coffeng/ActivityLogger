@@ -368,8 +368,23 @@ def main():
         "--hidden-import=pefile",
         "--collect-all=pystray",
         "--collect-all=PIL",
-        "--collect-all=matplotlib",
-        "--collect-all=pandas",
+        # Avoid PyInstaller conflict when both Qt bindings exist in environment.
+        # The app uses tkinter + matplotlib canvas, so Qt bindings are not required.
+        "--exclude-module=PyQt6",
+        "--exclude-module=PySide6",
+        "--exclude-module=PyQt5",
+        "--exclude-module=PySide2",
+        "--exclude-module=shiboken6",
+        # Exclude optional heavy stacks not used by this app.
+        "--exclude-module=IPython",
+        "--exclude-module=jupyter",
+        "--exclude-module=zmq",
+        "--exclude-module=scipy",
+        "--exclude-module=pyarrow",
+        "--exclude-module=numba",
+        "--exclude-module=llvmlite",
+        "--exclude-module=tensorflow",
+        "--exclude-module=torch",
     ]
 
     # Only use --icon if you trust your .ico file
@@ -395,28 +410,18 @@ def main():
         else:
             print("Warning: ActivityLogger.exe not found in dist directory")
 
-        # Ask if signing should be skipped, with 2s timeout, default yes
-        import threading
-
-        def ask_skip_sign():
+        skip_signing = os.environ.get("SKIP_SIGNING", "").strip().lower() in {"1", "true", "yes", "y"}
+        if not skip_signing:
             try:
-                return input("Skip signing ActivityLogger.exe? (Y/n) [default: Y]: ").strip().lower()
+                response = input("Sign ActivityLogger.exe? (Y/n): ").strip().lower()
+                if response in {"n", "no"}:
+                    skip_signing = True
             except Exception:
-                return ""
+                pass
 
-        skip_sign = [True]  # Use list for mutability in thread
-
-     
-        resp = ask_skip_sign()
-        if resp == "n":
-            skip_sign = False
-        else:
-            skip_sign = True
-
-        if skip_sign:
+        if skip_signing:
             print("Skipping signing ActivityLogger.exe.")
         else:
-            # Sign the executable
             print("Signing ActivityLogger.exe...")
             signtool_cmd = [
                 "signtool", "sign",
@@ -434,8 +439,10 @@ def main():
                     print("Failed to sign ActivityLogger.exe")
                     print("STDOUT:", sign_result.stdout)
                     print("STDERR:", sign_result.stderr)
+                    return 1
             except Exception as e:
                 print(f"Error running signtool: {e}")
+                return 1
 
         kill_if_active()
 

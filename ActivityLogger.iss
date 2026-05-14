@@ -6,6 +6,10 @@ PrivilegesRequiredOverridesAllowed=dialog
 DefaultDirName={autopf}\ActivityLogger
 OutputDir=.
 OutputBaseFilename=ActivityLogger_Setup
+#ifndef NO_SIGNING
+SignTool=signtool
+SignedUninstaller=yes
+#endif
 
 [Dirs]
 Name: "{userappdata}\Local\ActivityLogger"

@@ -1,0 +1,151 @@
+table HC-D2BYW34_ActivityLog
+	lineageTag: 25281c8a-03c5-4572-be2e-dcea9f407838
+
+	measure AverageHoursPerDay = ```
+			
+			AVERAGEX(
+			    VALUES('HC-D2BYW34_ActivityLog'[StartTime].[Day]),
+			    CALCULATE(SUM('HC-D2BYW34_ActivityLog'[Hours]))
+			)
+			
+			```
+		lineageTag: 5ee93919-02d2-4205-9b87-02b380c32a92
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column StartTime
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 0f2926c6-7f7e-43f5-ba57-192a1bf9d359
+		summarizeBy: none
+		sourceColumn: StartTime
+
+		variation Variation
+			isDefault
+			relationship: 14924fd5-7931-47a0-be33-86c5fb680064
+			defaultHierarchy: LocalDateTable_03132472-2d28-4aa3-b1ca-0828de293b8b.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+	column EndTime
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: f1ddaaf0-d186-436a-8066-c8a72a975ecb
+		summarizeBy: none
+		sourceColumn: EndTime
+
+		variation Variation
+			isDefault
+			relationship: 9ef01d19-1591-4c54-8a91-82fa30a23475
+			defaultHierarchy: LocalDateTable_67314301-b11c-4ebe-b65a-7ce6811c409e.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+	column Hours
+		dataType: double
+		formatString: 0
+		lineageTag: 99ab4b1c-677b-4b3b-b27b-877b6e7677f9
+		summarizeBy: sum
+		sourceColumn: Hours
+
+		annotation SummarizationSetBy = Automatic
+
+	column WindowTitle
+		dataType: string
+		lineageTag: cc9dc0ad-1fda-4ac3-a1ff-59fd82206c5d
+		summarizeBy: none
+		sourceColumn: WindowTitle
+
+		annotation SummarizationSetBy = Automatic
+
+	column WindowDetails
+		dataType: string
+		lineageTag: 7edec838-76fa-43ab-bee9-b77e7a5f83cd
+		summarizeBy: none
+		sourceColumn: WindowDetails
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProcessName
+		dataType: string
+		lineageTag: 42aa3260-f8e7-4ff9-a50a-5aedb69b191e
+		summarizeBy: none
+		sourceColumn: ProcessName
+
+		annotation SummarizationSetBy = Automatic
+
+	column Category
+		dataType: string
+		lineageTag: 39de1d9b-37af-4a40-96fb-fa9a15902d61
+		summarizeBy: none
+		sourceColumn: Category
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'StartTime - Time'
+		dataType: dateTime
+		formatString: Long Time
+		lineageTag: 13591e02-1785-464d-b9aa-3b132c0e0aab
+		summarizeBy: none
+		sourceColumn: StartTime - Time
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Time
+
+	column 'EndTime - Time'
+		dataType: dateTime
+		formatString: Long Time
+		lineageTag: 41d9f7ac-bb79-4f79-b3d8-a011fe3cc638
+		summarizeBy: none
+		sourceColumn: EndTime - Time
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Time
+
+	column 'StartTime - Hour'
+		dataType: int64
+		formatString: 0
+		lineageTag: b4d09222-8d2c-494b-9dfc-42f224326d4f
+		summarizeBy: sum
+		sourceColumn: StartTime - Hour
+
+		annotation SummarizationSetBy = Automatic
+
+	column ComputerName
+		dataType: string
+		lineageTag: 03cb628c-d236-4793-82e0-bf6880810e6c
+		summarizeBy: none
+		sourceColumn: ComputerName
+
+		annotation SummarizationSetBy = Automatic
+
+	partition HC-D2BYW34_ActivityLog = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\100014430\OneDrive - GE HealthCare\Documents\ActivityLogger\HC-D2BYW34_ActivityLog.csv"),[Delimiter=",", Columns=8, Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Removed Duplicate StartTimes" = Table.Distinct(#"Promoted Headers", {"StartTime"}),
+				    #"Removed Duplicate EndTimes" = Table.Distinct(#"Promoted Headers", {"EndTime"}),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Removed Duplicate EndTimes",{{"StartTime", type datetime}, {"EndTime", type datetime}, {"DurationSeconds", Int64.Type}, {"WindowTitle", type text}, {"WindowDetails", type text}, {"ProcessName", type text}, {"Category", type text}}),
+				    #"Divided Column" = Table.TransformColumns(#"Changed Type", {{"DurationSeconds", each _ / 3600, type number}}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Divided Column",{{"DurationSeconds", "Hours"}}),
+				    #"Duplicated Column" = Table.DuplicateColumn(#"Renamed Columns", "StartTime", "StartTime - Copy"),
+				    #"Renamed Columns1" = Table.RenameColumns(#"Duplicated Column",{{"StartTime - Copy", "StartTime - Time"}}),
+				    #"Extracted Time" = Table.TransformColumns(#"Renamed Columns1",{{"StartTime - Time", DateTime.Time, type time}}),
+				    #"Duplicated Column1" = Table.DuplicateColumn(#"Extracted Time", "EndTime", "EndTime - Copy"),
+				    #"Renamed Columns2" = Table.RenameColumns(#"Duplicated Column1",{{"EndTime - Copy", "EndTime - Time"}}),
+				    #"Extracted Time1" = Table.TransformColumns(#"Renamed Columns2",{{"EndTime - Time", DateTime.Time, type time}}),
+				    #"Duplicated Column2" = Table.DuplicateColumn(#"Extracted Time1", "StartTime - Time", "StartTime - Time - Copy"),
+				    #"Renamed Columns3" = Table.RenameColumns(#"Duplicated Column2",{{"StartTime - Time - Copy", "StartTime - Hour"}}),
+				    #"Extracted Hour" = Table.TransformColumns(#"Renamed Columns3",{{"StartTime - Hour", Time.Hour, Int64.Type}}),
+				    #"Removed Errors" = Table.RemoveRowsWithErrors(#"Extracted Hour", {"StartTime"})
+				in
+				    #"Removed Errors"
+
+	annotation PBI_ResultType = Table
+
+	annotation PBI_NavigationStepName = Navigation
+

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "ActivityLog"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "db9e755e-d7c6-48df-a845-67b5686ffa83"
+  }
+}

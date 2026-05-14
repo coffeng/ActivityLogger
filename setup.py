@@ -14,6 +14,10 @@ from pathlib import Path
 # --- Configuration ---
 # Adjust this path if Inno Setup 6 is installed in a different location.
 INNO_SETUP_COMPILER = Path("C:/Program Files (x86)/Inno Setup 6/ISCC.exe")
+INNO_SIGNTOOL_DEF = (
+    "/Ssigntool=signtool sign /tr http://timestamp.digicert.com "
+    "/td SHA256 /fd SHA256 /sha1 554cf2292aa90dcd2cda3326b39993c3407605ec $f"
+)
 
 # --- Project Paths ---
 ROOT_DIR = Path(__file__).parent.absolute()
@@ -63,7 +67,7 @@ def is_rebuild_needed():
     print("-> NO: Executable is up-to-date.")
     return False
 
-def run_build_script():
+def run_build_script(skip_signing=False):
     """Executes the build.py script to create the .exe."""
     print("\n--- Running build script (build.py) ---")
     if not BUILD_SCRIPT.exists():
@@ -72,7 +76,10 @@ def run_build_script():
 
     try:
         # Use sys.executable to ensure we use the same python interpreter
-        subprocess.run([sys.executable, str(BUILD_SCRIPT)], check=True)
+        env = os.environ.copy()
+        if skip_signing:
+            env["SKIP_SIGNING"] = "1"
+        subprocess.run([sys.executable, str(BUILD_SCRIPT)], check=True, env=env)
         print("--- Build script finished successfully. ---")
         return True
     except subprocess.CalledProcessError as e:
@@ -82,7 +89,7 @@ def run_build_script():
         print("Error: 'python' command not found. Make sure Python is in your PATH.")
         return False
 
-def run_inno_setup():
+def run_inno_setup(skip_signing=False):
     """Compiles the Inno Setup script."""
     print("\n--- Running Inno Setup Compiler ---")
     if not INNO_SETUP_COMPILER.exists():
@@ -96,7 +103,13 @@ def run_inno_setup():
 
     print(f"Compiling '{ISS_FILE}'...")
     try:
-        subprocess.run([str(INNO_SETUP_COMPILER), str(ISS_FILE)], check=True)
+        cmd = [str(INNO_SETUP_COMPILER)]
+        if skip_signing:
+            cmd.append("/DNO_SIGNING")
+        else:
+            cmd.append(INNO_SIGNTOOL_DEF)
+        cmd.append(str(ISS_FILE))
+        subprocess.run(cmd, check=True)
         print("--- Inno Setup compilation finished successfully. ---")
         print(f"Installer created in '{ROOT_DIR / 'Output'}' directory.")
         return True
@@ -104,14 +117,29 @@ def run_inno_setup():
         print(f"Error: Inno Setup compilation failed with return code {e.returncode}.")
         return False
 
+def should_skip_signing():
+    """Prompt whether code signing should be skipped for this run."""
+    try:
+        response = input("Skip code signing for EXE and installer? (y/N): ").strip().lower()
+    except Exception:
+        response = ""
+    return response in {"y", "yes"}
+
+
 def main():
     """Main script execution."""
+    skip_signing = should_skip_signing()
+    if skip_signing:
+        print("-> Code signing will be skipped for this run.")
+    else:
+        print("-> Code signing enabled for EXE and installer.")
+
     if is_rebuild_needed():
-        if not run_build_script():
+        if not run_build_script(skip_signing=skip_signing):
             print("\nBuild failed. Aborting installer creation.")
             return 1  # Exit with error code
 
-    if not run_inno_setup():
+    if not run_inno_setup(skip_signing=skip_signing):
         print("\nInstaller creation failed.")
         return 1  # Exit with error code
 

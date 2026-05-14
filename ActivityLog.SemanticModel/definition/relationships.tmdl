@@ -1,0 +1,10 @@
+relationship 14924fd5-7931-47a0-be33-86c5fb680064
+	joinOnDateBehavior: datePartOnly
+	fromColumn: HC-D2BYW34_ActivityLog.StartTime
+	toColumn: LocalDateTable_03132472-2d28-4aa3-b1ca-0828de293b8b.Date
+
+relationship 9ef01d19-1591-4c54-8a91-82fa30a23475
+	joinOnDateBehavior: datePartOnly
+	fromColumn: HC-D2BYW34_ActivityLog.EndTime
+	toColumn: LocalDateTable_67314301-b11c-4ebe-b65a-7ce6811c409e.Date
+

@@ -1,7 +1,7 @@
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1,0,34, 0),
-    prodvers=(1,0,34, 0),
+    filevers=(1,0,50, 0),
+    prodvers=(1,0,50, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x4,
@@ -15,10 +15,10 @@ VSVersionInfo(
         '040904B0',
         [StringStruct('CompanyName', 'Your Company'),
         StringStruct('FileDescription', 'Activity Logger'),
-        StringStruct('FileVersion', '1.0.34'),
-        StringStruct('ProductVersion', '1.0.34'),
-        StringStruct('BuildDate', '2025-09-01'),
-        StringStruct('BuildTime', '14:33:12')]
+        StringStruct('FileVersion', '1.0.50'),
+        StringStruct('ProductVersion', '1.0.50'),
+        StringStruct('BuildDate', '2026-05-14'),
+        StringStruct('BuildTime', '18:41:55')]
         )
       ]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])

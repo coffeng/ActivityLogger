@@ -1,0 +1,23 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-FI
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation PBI_QueryOrder = ["HC-D2BYW34_ActivityLog"]
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBIDesktopVersion = 2.143.1204.0 (25.05)+23c84aace645781dd62b8a26eb0418c7e6a84b72
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table HC-D2BYW34_ActivityLog
+ref table DateTableTemplate_27df93a6-bbba-4e9f-bbcc-dcf83ed79a76
+ref table LocalDateTable_03132472-2d28-4aa3-b1ca-0828de293b8b
+ref table LocalDateTable_67314301-b11c-4ebe-b65a-7ce6811c409e
+
+ref cultureInfo en-US
+

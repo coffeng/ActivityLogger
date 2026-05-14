@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "ActivityLog"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "daac5c9d-8df0-4518-980e-c3ee147a5e4a"
+  }
+}

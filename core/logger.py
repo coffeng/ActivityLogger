@@ -21,6 +21,7 @@ from .utils import get_log_path
 # Constants
 LOG_PATH = get_log_path()
 INTERVAL_SECONDS = 1
+MIN_SAVE_INTERVAL_SECONDS = 300
 
 # Windows API setup
 user32 = ctypes.windll.user32
@@ -53,10 +54,16 @@ class ActivityLogger:
         
         # Track rows added since last config save
         self.rows_added_since_save = 0
-        self.save_interval = 10  # Save config every 10 new rows
+        self.save_interval = 10  # Require at least 10 new rows before save
+        self.min_save_interval_seconds = MIN_SAVE_INTERVAL_SECONDS
+        self.last_app_categories_save_time = time.monotonic()
 
         # For idle detection
         self.idle_check_interval = 5  # Check idle every 5 seconds
+
+        # Summary write throttling (never more than once per 5 minutes)
+        self.last_summary_save_time = 0.0
+        self.pending_summary_generation = False
         
         # Backfill any missing computer names in existing log file
         self._backfill_done = False
@@ -67,6 +74,38 @@ class ActivityLogger:
     def save_app_categories(self):
         """Save app categories using config manager"""
         self.config_manager.save_app_categories(self.app_categories)
+
+    def _should_allow_write(self, last_write_time):
+        """Check if enough time has passed since the previous write."""
+        return (time.monotonic() - last_write_time) >= self.min_save_interval_seconds
+
+    def _try_save_app_categories(self):
+        """Save categories only when both row and time thresholds are met."""
+        if self.rows_added_since_save < self.save_interval:
+            return False
+
+        if not self._should_allow_write(self.last_app_categories_save_time):
+            return False
+
+        self.save_app_categories()
+        self.rows_added_since_save = 0
+        self.last_app_categories_save_time = time.monotonic()
+        print("Saved app categories (threshold met and >=5 minutes elapsed)")
+        return True
+
+    def _try_generate_summary(self, force=False):
+        """Generate summary with a minimum 5-minute write interval."""
+        if not force and not self.pending_summary_generation:
+            return False
+
+        if not self._should_allow_write(self.last_summary_save_time):
+            return False
+
+        if self.generate_summary():
+            self.last_summary_save_time = time.monotonic()
+            self.pending_summary_generation = False
+            return True
+        return False
 
     def get_active_window_title(self):
         """Get the title of the currently active window"""
@@ -237,9 +276,7 @@ class ActivityLogger:
         
         # Increment row counter and save config if needed
         self.rows_added_since_save += 1
-        if self.rows_added_since_save >= self.save_interval:
-            self.save_app_categories()
-            self.rows_added_since_save = 0
+        self._try_save_app_categories()
 
     def install_hook(self):
         """Install the window change hook"""
@@ -385,6 +422,10 @@ class ActivityLogger:
                 if idle_check_counter >= idle_check_frequency:
                     idle_check_counter = 0
                     self._check_idle_status(current_window, current_proc, current_details, current_category)
+
+                # Flush deferred writes only when minimum interval has elapsed
+                self._try_save_app_categories()
+                self._try_generate_summary()
 
             except Exception as e:
                 print(f"Error in polling loop: {e}")
@@ -553,9 +594,11 @@ class ActivityLogger:
                 
                 # Save updated categories
                 self.save_app_categories()
-                
-                # Force regeneration of summary file
-                self.generate_summary()
+
+                # Regenerate summary, but never more than once every 5 minutes
+                self.pending_summary_generation = True
+                if not self._try_generate_summary(force=True):
+                    print("Summary generation deferred to respect 5-minute minimum interval")
             
             return updated_count
             
@@ -599,9 +642,14 @@ class ActivityLogger:
     def generate_summary(self):
         """Generate a summary CSV with total duration per process and category."""
         try:
+            if not self._should_allow_write(self.last_summary_save_time):
+                self.pending_summary_generation = True
+                print("Skipping summary write: minimum 5-minute interval not reached")
+                return False
+
             if not os.path.exists(self.log_path):
                 print("No log file found for summary generation.")
-                return
+                return False
 
             summary = {}
             with open(self.log_path, 'r', encoding='utf-8') as f:
@@ -622,6 +670,8 @@ class ActivityLogger:
                     writer.writerow([process, category, total_duration])
 
             print(f"Summary written to {summary_path}")
+            return True
 
         except Exception as e:
             print(f"Error generating summary: {e}")
+            return False

@@ -1,0 +1,120 @@
+{
+  "config": "{\"version\":\"5.64\",\"themeCollection\":{\"baseTheme\":{\"name\":\"CY24SU10\",\"version\":\"5.64\",\"type\":2}},\"activeSectionIndex\":0,\"defaultDrillFilterOtherVisuals\":true,\"linguisticSchemaSyncVersion\":2,\"settings\":{\"useNewFilterPaneExperience\":true,\"allowChangeFilterTypes\":true,\"useStylableVisualContainerHeader\":true,\"queryLimitOption\":6,\"exportDataMode\":1,\"useDefaultAggregateDisplayName\":true,\"useEnhancedTooltips\":true},\"objects\":{\"section\":[{\"properties\":{\"verticalAlignment\":{\"expr\":{\"Literal\":{\"Value\":\"'Top'\"}}}}}]}}",
+  "filters": "[{\"name\":\"b7f650b3a6444b0b50e0\",\"expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Entity\":\"HC-D2BYW34_ActivityLog\"}},\"Property\":\"Category\"}},\"type\":\"Categorical\",\"howCreated\":1,\"objects\":{}}]",
+  "layoutOptimization": 1,
+  "publicCustomVisuals": [
+    "Gantt1448688115699",
+    "powerBIGanttChartCertificationEDB15A648FAA4257A190BB4E1117FD58",
+    "Timeline1447991079100"
+  ],
+  "resourcePackages": [
+    {
+      "resourcePackage": {
+        "disabled": false,
+        "items": [
+          {
+            "name": "CY24SU10",
+            "path": "BaseThemes/CY24SU10.json",
+            "type": 202
+          }
+        ],
+        "name": "SharedResources",
+        "type": 2
+      }
+    }
+  ],
+  "sections": [
+    {
+      "config": "{}",
+      "displayName": "Page 1",
+      "displayOption": 1,
+      "filters": "[{\"name\":\"b8bfd5533b85047d042c\",\"expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Entity\":\"HC-D2BYW34_ActivityLog\"}},\"Property\":\"StartTime\"}},\"type\":\"Categorical\",\"howCreated\":1}]",
+      "height": 720.00,
+      "name": "64cb3947d0b11cd0a335",
+      "visualContainers": [
+        {
+          "config": "{\"name\":\"004024ceb4e667c03137\",\"layouts\":[{\"id\":0,\"position\":{\"x\":977.5075987841946,\"y\":625.4103343465046,\"z\":4000,\"width\":302.4924012158055,\"height\":94.34650455927051,\"tabOrder\":4000}},{\"id\":1,\"position\":{\"x\":0,\"y\":1140,\"z\":2002,\"width\":324,\"height\":135,\"tabOrder\":2002}}],\"singleVisual\":{\"visualType\":\"slicer\",\"projections\":{\"Values\":[{\"queryRef\":\"HC-D2BYW34_ActivityLog.StartTime - Hour\",\"active\":true}]},\"prototypeQuery\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Select\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"StartTime - Hour\"},\"Name\":\"HC-D2BYW34_ActivityLog.StartTime - Hour\",\"NativeReferenceName\":\"StartTime - Hour\"}]},\"drillFilterOtherVisuals\":true,\"hasDefaultSort\":true,\"objects\":{\"data\":[{\"properties\":{\"startDate\":{\"expr\":{\"Literal\":{\"Value\":\"datetime'1899-12-30T00:00:00'\"}}},\"endDate\":{\"expr\":{\"Literal\":{\"Value\":\"datetime'1899-12-30T16:35:11'\"}}},\"mode\":{\"expr\":{\"Literal\":{\"Value\":\"'Between'\"}}}}}],\"general\":[{\"properties\":{}}]}}}",
+          "filters": "[]",
+          "height": 94.35,
+          "width": 302.49,
+          "x": 977.51,
+          "y": 625.41,
+          "z": 4000.00
+        },
+        {
+          "config": "{\"name\":\"24e6d1be1cd09a6057cc\",\"layouts\":[{\"id\":0,\"position\":{\"x\":977.5075987841946,\"y\":527.1732522796353,\"z\":3000,\"width\":302.4924012158055,\"height\":98.2370820668693,\"tabOrder\":3000}},{\"id\":1,\"position\":{\"x\":0,\"y\":983,\"z\":2001,\"width\":324,\"height\":135,\"tabOrder\":2001}}],\"singleVisual\":{\"visualType\":\"slicer\",\"projections\":{\"Values\":[{\"queryRef\":\"HC-D2BYW34_ActivityLog.StartTime\",\"active\":true}]},\"prototypeQuery\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Select\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"StartTime\"},\"Name\":\"HC-D2BYW34_ActivityLog.StartTime\",\"NativeReferenceName\":\"StartTime\"}],\"OrderBy\":[{\"Direction\":1,\"Expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"StartTime\"}}}]},\"drillFilterOtherVisuals\":true,\"hasDefaultSort\":true,\"objects\":{\"data\":[{\"properties\":{\"startDate\":{\"expr\":{\"Literal\":{\"Value\":\"datetime'2025-06-27T15:04:13'\"}}},\"endDate\":{\"expr\":{\"Literal\":{\"Value\":\"datetime'2025-11-29T19:59:13.727'\"}}},\"mode\":{\"expr\":{\"Literal\":{\"Value\":\"'Between'\"}}}}}],\"general\":[{\"properties\":{\"filter\":{\"filter\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Where\":[{\"Condition\":{\"And\":{\"Left\":{\"Comparison\":{\"ComparisonKind\":2,\"Left\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"StartTime\"}},\"Right\":{\"Literal\":{\"Value\":\"datetime'2025-06-27T00:00:00'\"}}}},\"Right\":{\"Comparison\":{\"ComparisonKind\":3,\"Left\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"StartTime\"}},\"Right\":{\"Literal\":{\"Value\":\"datetime'2025-11-30T00:00:00'\"}}}}}}}]}}}}]}}}",
+          "filters": "[]",
+          "height": 98.24,
+          "width": 302.49,
+          "x": 977.51,
+          "y": 527.17,
+          "z": 3000.00
+        },
+        {
+          "config": "{\"name\":\"28ea7e45e962e9106047\",\"layouts\":[{\"id\":0,\"position\":{\"x\":9.20863309352518,\"y\":0,\"z\":0,\"width\":526.4268585131894,\"height\":422.06235011990407,\"tabOrder\":0}},{\"id\":1,\"position\":{\"x\":0,\"y\":0,\"z\":0,\"width\":324,\"height\":274,\"tabOrder\":0}}],\"singleVisual\":{\"visualType\":\"barChart\",\"projections\":{\"Category\":[{\"queryRef\":\"HC-D2BYW34_ActivityLog.Category\",\"active\":true}],\"Y\":[{\"queryRef\":\"Sum(HC-D2BYW34_ActivityLog.DurationSeconds)\"}],\"Series\":[{\"queryRef\":\"HC-D2BYW34_ActivityLog.ProcessName\"}]},\"prototypeQuery\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Select\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Category\"},\"Name\":\"HC-D2BYW34_ActivityLog.Category\",\"NativeReferenceName\":\"Category\"},{\"Aggregation\":{\"Expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Hours\"}},\"Function\":0},\"Name\":\"Sum(HC-D2BYW34_ActivityLog.DurationSeconds)\",\"NativeReferenceName\":\"Sum of Hours\"},{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"ProcessName\"},\"Name\":\"HC-D2BYW34_ActivityLog.ProcessName\",\"NativeReferenceName\":\"ProcessName\"}],\"OrderBy\":[{\"Direction\":2,\"Expression\":{\"Aggregation\":{\"Expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Hours\"}},\"Function\":0}}}]},\"drillFilterOtherVisuals\":true,\"hasDefaultSort\":true,\"objects\":{\"legend\":[{\"properties\":{\"position\":{\"expr\":{\"Literal\":{\"Value\":\"'Right'\"}}}}}]}}}",
+          "filters": "[{\"name\":\"a5ae7eff22cda8eb805c\",\"expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Entity\":\"HC-D2BYW34_ActivityLog\"}},\"Property\":\"WindowTitle\"}},\"filter\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Where\":[{\"Condition\":{\"Not\":{\"Expression\":{\"In\":{\"Expressions\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"WindowTitle\"}}],\"Values\":[[{\"Literal\":{\"Value\":\"'Inactive'\"}}]]}}}}}]},\"type\":\"Categorical\",\"howCreated\":1,\"objects\":{\"general\":[{\"properties\":{\"isInvertedSelectionMode\":{\"expr\":{\"Literal\":{\"Value\":\"true\"}}}}}]},\"isHiddenInViewMode\":false}]",
+          "height": 422.06,
+          "width": 526.43,
+          "x": 9.21,
+          "y": 0.00,
+          "z": 0.00
+        },
+        {
+          "config": "{\"name\":\"29a504a600d0700091a5\",\"layouts\":[{\"id\":0,\"position\":{\"x\":947.355623100304,\"y\":247.0516717325228,\"z\":6000,\"width\":332.64437689969606,\"height\":141.03343465045594,\"tabOrder\":6000}}],\"singleVisual\":{\"visualType\":\"barChart\",\"projections\":{\"Y\":[{\"queryRef\":\"Sum(HC-D2BYW34_ActivityLog.DurationSeconds)\"}],\"Series\":[{\"queryRef\":\"HC-D2BYW34_ActivityLog.ProcessName\"}]},\"prototypeQuery\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Select\":[{\"Aggregation\":{\"Expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Hours\"}},\"Function\":0},\"Name\":\"Sum(HC-D2BYW34_ActivityLog.DurationSeconds)\",\"NativeReferenceName\":\"Sum of Hours\"},{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"ProcessName\"},\"Name\":\"HC-D2BYW34_ActivityLog.ProcessName\",\"NativeReferenceName\":\"ProcessName\"}],\"OrderBy\":[{\"Direction\":2,\"Expression\":{\"Aggregation\":{\"Expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Hours\"}},\"Function\":0}}}]},\"drillFilterOtherVisuals\":true,\"hasDefaultSort\":true,\"objects\":{\"legend\":[{\"properties\":{\"position\":{\"expr\":{\"Literal\":{\"Value\":\"'Right'\"}}}}}]}}}",
+          "filters": "[{\"name\":\"a5ae7eff22cda8eb805c\",\"expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Entity\":\"HC-D2BYW34_ActivityLog\"}},\"Property\":\"WindowTitle\"}},\"filter\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Where\":[{\"Condition\":{\"Not\":{\"Expression\":{\"In\":{\"Expressions\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"WindowTitle\"}}],\"Values\":[[{\"Literal\":{\"Value\":\"'Inactive'\"}}]]}}}}}]},\"type\":\"Categorical\",\"howCreated\":1,\"objects\":{\"general\":[{\"properties\":{\"isInvertedSelectionMode\":{\"expr\":{\"Literal\":{\"Value\":\"true\"}}}}}]},\"isHiddenInViewMode\":false}]",
+          "height": 141.03,
+          "width": 332.64,
+          "x": 947.36,
+          "y": 247.05,
+          "z": 6000.00
+        },
+        {
+          "config": "{\"name\":\"49758b06a56e47d3331f\",\"layouts\":[{\"id\":0,\"position\":{\"x\":1098,\"y\":0,\"width\":182,\"height\":211,\"z\":8000,\"tabOrder\":8000}}],\"singleVisual\":{\"visualType\":\"slicer\",\"projections\":{\"Values\":[{\"queryRef\":\"HC-D2BYW34_ActivityLog.ComputerName\",\"active\":true}]},\"prototypeQuery\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Select\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"ComputerName\"},\"Name\":\"HC-D2BYW34_ActivityLog.ComputerName\",\"NativeReferenceName\":\"ComputerName\"}]},\"drillFilterOtherVisuals\":true,\"objects\":{\"data\":[{\"properties\":{\"mode\":{\"expr\":{\"Literal\":{\"Value\":\"'Basic'\"}}}}}]}}}",
+          "filters": "[]",
+          "height": 211.00,
+          "width": 182.00,
+          "x": 1098.00,
+          "y": 0.00,
+          "z": 8000.00
+        },
+        {
+          "config": "{\"name\":\"6863008631a0090630b0\",\"layouts\":[{\"id\":0,\"position\":{\"x\":535.9270516717326,\"y\":0,\"z\":5000,\"width\":404.62006079027356,\"height\":388.0851063829787,\"tabOrder\":5000}},{\"id\":1,\"position\":{\"x\":0,\"y\":1275,\"z\":2003,\"width\":324,\"height\":394}}],\"singleVisual\":{\"visualType\":\"barChart\",\"projections\":{\"Category\":[{\"queryRef\":\"HC-D2BYW34_ActivityLog.ProcessName\",\"active\":true}],\"Y\":[{\"queryRef\":\"Sum(HC-D2BYW34_ActivityLog.Hours)\"}],\"Series\":[{\"queryRef\":\"HC-D2BYW34_ActivityLog.StartTime - Hour\"}]},\"prototypeQuery\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Select\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"ProcessName\"},\"Name\":\"HC-D2BYW34_ActivityLog.ProcessName\",\"NativeReferenceName\":\"ProcessName\"},{\"Aggregation\":{\"Expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Hours\"}},\"Function\":0},\"Name\":\"Sum(HC-D2BYW34_ActivityLog.Hours)\",\"NativeReferenceName\":\"Sum of Hours\"},{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"StartTime - Hour\"},\"Name\":\"HC-D2BYW34_ActivityLog.StartTime - Hour\",\"NativeReferenceName\":\"StartTime - Hour\"}],\"OrderBy\":[{\"Direction\":2,\"Expression\":{\"Aggregation\":{\"Expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Hours\"}},\"Function\":0}}}]},\"drillFilterOtherVisuals\":true,\"hasDefaultSort\":true,\"objects\":{\"legend\":[{\"properties\":{\"position\":{\"expr\":{\"Literal\":{\"Value\":\"'Right'\"}}}}}]}}}",
+          "filters": "[{\"name\":\"a5ae7eff22cda8eb805c\",\"expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Entity\":\"HC-D2BYW34_ActivityLog\"}},\"Property\":\"WindowTitle\"}},\"filter\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Where\":[{\"Condition\":{\"Not\":{\"Expression\":{\"In\":{\"Expressions\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"WindowTitle\"}}],\"Values\":[[{\"Literal\":{\"Value\":\"'Inactive'\"}}]]}}}}}]},\"type\":\"Categorical\",\"howCreated\":1,\"objects\":{\"general\":[{\"properties\":{\"isInvertedSelectionMode\":{\"expr\":{\"Literal\":{\"Value\":\"true\"}}}}}]},\"isHiddenInViewMode\":false}]",
+          "height": 388.09,
+          "width": 404.62,
+          "x": 535.93,
+          "y": 0.00,
+          "z": 5000.00
+        },
+        {
+          "config": "{\"name\":\"876a90a689d23d1977e5\",\"layouts\":[{\"id\":0,\"position\":{\"x\":893.8601823708207,\"y\":380.30395136778117,\"z\":7000,\"width\":386.13981762917933,\"height\":116.71732522796353,\"tabOrder\":7000}}],\"singleVisual\":{\"visualType\":\"cardVisual\",\"projections\":{\"Data\":[{\"queryRef\":\"Sum(HC-D2BYW34_ActivityLog.Hours)\"},{\"queryRef\":\"HC-D2BYW34_ActivityLog.AverageHoursPerDay\"}]},\"prototypeQuery\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Select\":[{\"Aggregation\":{\"Expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Hours\"}},\"Function\":0},\"Name\":\"Sum(HC-D2BYW34_ActivityLog.Hours)\",\"NativeReferenceName\":\"Sum of Hours\"},{\"Measure\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"AverageHoursPerDay\"},\"Name\":\"HC-D2BYW34_ActivityLog.AverageHoursPerDay\",\"NativeReferenceName\":\"AverageHoursPerDay\"}],\"OrderBy\":[{\"Direction\":2,\"Expression\":{\"Aggregation\":{\"Expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Hours\"}},\"Function\":0}}}]},\"drillFilterOtherVisuals\":true,\"hasDefaultSort\":true,\"objects\":{\"referenceLabel\":[{\"properties\":{},\"selector\":{\"data\":[{\"dataViewWildcard\":{\"matchingOption\":0}}],\"metadata\":\"Sum(HC-D2BYW34_ActivityLog.Hours)\",\"id\":\"field-2a6e0e1b-6e8b-1893-9320-43a5d34c41fa\",\"order\":0}}],\"layout\":[{\"properties\":{\"style\":{\"expr\":{\"Literal\":{\"Value\":\"'Cards'\"}}}}}]},\"vcObjects\":{\"visualHeader\":[{\"properties\":{\"show\":{\"expr\":{\"Literal\":{\"Value\":\"true\"}}}}}],\"title\":[{\"properties\":{\"show\":{\"expr\":{\"Literal\":{\"Value\":\"false\"}}}}}]}}}",
+          "filters": "[{\"name\":\"728b2da62f7ddf95b12c\",\"expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Entity\":\"HC-D2BYW34_ActivityLog\"}},\"Property\":\"WindowTitle\"}},\"filter\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Where\":[{\"Condition\":{\"Not\":{\"Expression\":{\"Comparison\":{\"ComparisonKind\":0,\"Left\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"WindowTitle\"}},\"Right\":{\"Literal\":{\"Value\":\"'Inactive'\"}}}}}}}]},\"type\":\"Advanced\",\"howCreated\":1}]",
+          "height": 116.72,
+          "width": 386.14,
+          "x": 893.86,
+          "y": 380.30,
+          "z": 7000.00
+        },
+        {
+          "config": "{\"name\":\"9295f41ea161aa39486c\",\"layouts\":[{\"id\":0,\"position\":{\"x\":8.753799392097266,\"y\":438.66261398176295,\"z\":1000,\"width\":873.4346504559271,\"height\":281.09422492401217,\"tabOrder\":1000}},{\"id\":1,\"position\":{\"x\":0,\"y\":617,\"z\":1000,\"width\":324,\"height\":344,\"tabOrder\":1000}}],\"singleVisual\":{\"visualType\":\"columnChart\",\"projections\":{\"Category\":[{\"queryRef\":\"HC-D2BYW34_ActivityLog.StartTime.Variation.Date Hierarchy.Month\",\"active\":true},{\"queryRef\":\"HC-D2BYW34_ActivityLog.StartTime.Variation.Date Hierarchy.Day\"},{\"queryRef\":\"HC-D2BYW34_ActivityLog.StartTime - Hour\"}],\"Series\":[{\"queryRef\":\"HC-D2BYW34_ActivityLog.Category\"}],\"Y\":[{\"queryRef\":\"Sum(HC-D2BYW34_ActivityLog.Hours)\"}]},\"prototypeQuery\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Select\":[{\"HierarchyLevel\":{\"Expression\":{\"Hierarchy\":{\"Expression\":{\"PropertyVariationSource\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Name\":\"Variation\",\"Property\":\"StartTime\"}},\"Hierarchy\":\"Date Hierarchy\"}},\"Level\":\"Month\"},\"Name\":\"HC-D2BYW34_ActivityLog.StartTime.Variation.Date Hierarchy.Month\",\"NativeReferenceName\":\"StartTime Month\"},{\"HierarchyLevel\":{\"Expression\":{\"Hierarchy\":{\"Expression\":{\"PropertyVariationSource\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Name\":\"Variation\",\"Property\":\"StartTime\"}},\"Hierarchy\":\"Date Hierarchy\"}},\"Level\":\"Day\"},\"Name\":\"HC-D2BYW34_ActivityLog.StartTime.Variation.Date Hierarchy.Day\",\"NativeReferenceName\":\"StartTime Day\"},{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Category\"},\"Name\":\"HC-D2BYW34_ActivityLog.Category\",\"NativeReferenceName\":\"Category\"},{\"Aggregation\":{\"Expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Hours\"}},\"Function\":0},\"Name\":\"Sum(HC-D2BYW34_ActivityLog.Hours)\",\"NativeReferenceName\":\"Sum of Hours\"},{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"StartTime - Hour\"},\"Name\":\"HC-D2BYW34_ActivityLog.StartTime - Hour\",\"NativeReferenceName\":\"StartTime - Hour\"}]},\"drillFilterOtherVisuals\":true,\"objects\":{}}}",
+          "filters": "[{\"name\":\"ae8b246fd58d7c0d1cd4\",\"expression\":{\"Column\":{\"Expression\":{\"SourceRef\":{\"Entity\":\"HC-D2BYW34_ActivityLog\"}},\"Property\":\"Category\"}},\"filter\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Where\":[{\"Condition\":{\"Not\":{\"Expression\":{\"In\":{\"Expressions\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Category\"}}],\"Values\":[[{\"Literal\":{\"Value\":\"'Inactive'\"}}]]}}}}}]},\"type\":\"Categorical\",\"howCreated\":0,\"objects\":{\"general\":[{\"properties\":{\"isInvertedSelectionMode\":{\"expr\":{\"Literal\":{\"Value\":\"true\"}}}}}]},\"isHiddenInViewMode\":false}]",
+          "height": 281.09,
+          "width": 873.43,
+          "x": 8.75,
+          "y": 438.66,
+          "z": 1000.00
+        },
+        {
+          "config": "{\"name\":\"c83be86e0450c0d330cb\",\"layouts\":[{\"id\":0,\"position\":{\"x\":947.355623100304,\"y\":0,\"z\":2000,\"width\":150.7598784194529,\"height\":211.06382978723406,\"tabOrder\":2000}},{\"id\":1,\"position\":{\"x\":0,\"y\":312,\"z\":2000,\"width\":324,\"height\":282,\"tabOrder\":2000}}],\"singleVisual\":{\"visualType\":\"slicer\",\"projections\":{\"Values\":[{\"queryRef\":\"HC-D2BYW34_ActivityLog.Category\",\"active\":true}]},\"prototypeQuery\":{\"Version\":2,\"From\":[{\"Name\":\"h\",\"Entity\":\"HC-D2BYW34_ActivityLog\",\"Type\":0}],\"Select\":[{\"Column\":{\"Expression\":{\"SourceRef\":{\"Source\":\"h\"}},\"Property\":\"Category\"},\"Name\":\"HC-D2BYW34_ActivityLog.Category\",\"NativeReferenceName\":\"Category\"}]},\"drillFilterOtherVisuals\":true,\"objects\":{\"data\":[{\"properties\":{\"mode\":{\"expr\":{\"Literal\":{\"Value\":\"'Basic'\"}}},\"isInvertedSelectionMode\":{\"expr\":{\"Literal\":{\"Value\":\"true\"}}}}}],\"general\":[{\"properties\":{}}],\"selection\":[{\"properties\":{\"selectAllCheckboxEnabled\":{\"expr\":{\"Literal\":{\"Value\":\"true\"}}}}}]}}}",
+          "filters": "[]",
+          "height": 211.06,
+          "width": 150.76,
+          "x": 947.36,
+          "y": 0.00,
+          "z": 2000.00
+        }
+      ],
+      "width": 1280.00
+    }
+  ]
+}
